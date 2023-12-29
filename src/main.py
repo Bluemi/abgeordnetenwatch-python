@@ -4,15 +4,15 @@
 import json
 from pprint import pprint
 
-import requests
+import politicans
+from utils import QuestionAnswersParser
 
 
 def main_api():
-    # pprint(politicans.get_politicians(last_name='Gysi'))
-    r = requests.get('https://www.abgeordnetenwatch.de/api/v2/topics/2')
-    if r.ok:
-        with open('data/topic.json', 'w') as f:
-            json.dump(r.json(), f, indent=4)
+    example_politician = politicans.get_politicians(first_name='Heike', last_name='Wermer')[0]
+    hrefs = example_politician.get_questions_answers()
+    for href in hrefs:
+        print(href)
 
 
 def main_file():

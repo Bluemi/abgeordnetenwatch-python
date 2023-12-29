@@ -2,6 +2,7 @@ from typing import List
 
 import requests
 from party import Party
+from utils import QuestionAnswersParser
 
 
 class Politician:
@@ -38,6 +39,32 @@ class Politician:
         first_name = self.first_name.lower().replace(' ', '-')
         last_name = self.last_name.lower().replace(' ', '-')
         return 'https://www.abgeordnetenwatch.de/profile/{}-{}'.format(first_name, last_name)
+
+    def get_questions_answers_url(self, page=None):
+        if page is None:
+            return '{}/{}'.format(self.get_url(), 'fragen-antworten')
+        else:
+            return '{}/{}?page={}'.format(self.get_url(), 'fragen-antworten', page)
+
+    def get_questions_answers(self):
+        page = 0
+        parser = QuestionAnswersParser()
+        while True:
+            url = self.get_questions_answers_url(page)
+            page += 1
+            r = requests.get(url)
+            if r.ok:
+                # print('status code {}: {}'.format(page, r.status_code))
+                old_count = len(parser.hrefs)
+                parser.feed(r.text)
+                # print(old_count, len(parser.hrefs))
+                # for href in parser.hrefs:
+                # print('\t', href)
+                if old_count == len(parser.hrefs):
+                    break
+            else:
+                break
+        return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
 
     def get_label(self):
         return '{} {}'.format(self.first_name, self.last_name)
