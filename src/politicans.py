@@ -72,5 +72,3 @@ def get_politicians(id=None, first_name=None, last_name=None, party=None, reside
     r = requests.get('https://www.abgeordnetenwatch.de/api/v2/politicians', params=params)
     if r.ok:
         return [Politician.from_json(pol_data) for pol_data in r.json()['data']]
-    else:
-
