@@ -5,14 +5,16 @@ import json
 from pprint import pprint
 
 import politicans
-from utils import QuestionAnswersParser
 
 
 def main_api():
-    example_politician = politicans.get_politicians(first_name='Heike', last_name='Wermer')[0]
-    hrefs = example_politician.get_questions_answers()
-    for href in hrefs:
-        print(href)
+    example_politician = politicans.get_politicians(first_name='Björn', last_name='Thümler')[0]
+    questions_answers = example_politician.load_questions_answers()
+
+    for question, answer in questions_answers:
+        print('Question: ', question)
+        print('\nAnswer: ', answer)
+        print('#'*60)
 
 
 def main_file():

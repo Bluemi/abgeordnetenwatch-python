@@ -1,8 +1,8 @@
-from typing import List
+from typing import List, Tuple
 
 import requests
 from party import Party
-from utils import QuestionAnswersParser
+from utils import QuestionsAnswersParser, download_question_answers
 
 
 class Politician:
@@ -46,9 +46,9 @@ class Politician:
         else:
             return '{}/{}?page={}'.format(self.get_url(), 'fragen-antworten', page)
 
-    def get_questions_answers(self):
+    def get_questions_answers_urls(self):
         page = 0
-        parser = QuestionAnswersParser()
+        parser = QuestionsAnswersParser()
         while True:
             url = self.get_questions_answers_url(page)
             page += 1
@@ -64,7 +64,12 @@ class Politician:
                     break
             else:
                 break
+
+        print('{} questions answers found'.format(len(parser.hrefs)))
         return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
+
+    def load_questions_answers(self) -> List[Tuple[str, str]]:
+        return [download_question_answers(url) for url in self.get_questions_answers_urls()]
 
     def get_label(self):
         return '{} {}'.format(self.first_name, self.last_name)
