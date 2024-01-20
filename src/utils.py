@@ -1,3 +1,4 @@
+import enum
 import html.parser
 from typing import Optional, Tuple
 
@@ -64,22 +65,69 @@ class QuestionAnswerParser(html.parser.HTMLParser):
                 self.question = ' '.join(t for t in data.strip().replace('\n', ' ').split(' ') if t)
 
 
-def download_question_answers(url) -> Tuple[Optional[str], Optional[str]]:
+class DownloadResult:
+    class ErrorCode(enum.Enum):
+        OK = 0
+        UNINITIALIZED = 1
+        PAGE_DOWNLOAD_FAILED = 2
+        QUESTION_PARSING_FAILED = 3
+        ANSWER_PARSING_FAILED = 4
+        ANSWER_TAG_NOT_FOUND = 5
+        QUESTION_TAG_NOT_FOUND = 6
+
+    def __init__(self, content: str = None, url: str = None, error_code: int = ErrorCode.UNINITIALIZED, error_text: str = None):
+        self.content = content
+        self.url = url
+        self.error_code = error_code
+        self.error_text = error_text
+
+    def ok(self):
+        return self.error_code == DownloadResult.ErrorCode.OK
+
+    def set_content(self, content: str = None):
+        self.content = content
+        self.error_code = DownloadResult.ErrorCode.OK
+
+    def failed(self, error_code: ErrorCode, error_text: str):
+        self.error_code = error_code
+        self.error_text = error_text
+
+
+def download_question_answer(url) -> Tuple[DownloadResult, DownloadResult]:
+    question_download_result = DownloadResult(url=url)
+    answer_download_result = DownloadResult(url=url)
     r = requests.get(url)
     if r.ok:
-        return parse_question_answer(r.text)
+        parse_question_answer(r.text, question_download_result, answer_download_result)
+    else:
+        question_download_result.failed(
+            DownloadResult.ErrorCode.PAGE_DOWNLOAD_FAILED, f'Page download failed with code {r.status_code}'
+        )
+        answer_download_result.failed(
+            DownloadResult.ErrorCode.PAGE_DOWNLOAD_FAILED, f'Page download failed with code {r.status_code}'
+        )
+    return question_download_result, answer_download_result
 
 
-def parse_question_answer(content) -> Tuple[Optional[str], Optional[str]]:
+def parse_question_answer(content, question_result, answer_result):
     soup = BeautifulSoup(content, 'html.parser')
     question_tag = soup.find('div', {'class': 'tile__question-text'})
-    question = None
     if question_tag:
-        question = ' '.join(filter(bool, question_tag.div.p.string.strip().split(' ')))
+        try:
+            question = ' '.join(filter(bool, question_tag.div.p.string.strip().split(' ')))
+            question_result.set_content(question)
+        except AttributeError as e:
+            question_result.failed(DownloadResult.ErrorCode.QUESTION_PARSING_FAILED, repr(e))
+    else:
+        question_result.failed(DownloadResult.ErrorCode.ANSWER_TAG_NOT_FOUND)
 
     answer_tag = soup.find('div', {'class': 'question-answer__text'})
-    answer = None
     if answer_tag:
-        answer = ' '.join(filter(bool, answer_tag.div.text.strip().split(' ')))
+        try:
+            answer = ' '.join(filter(bool, answer_tag.div.text.strip().split(' ')))
+            answer_result.set_content(answer)
+        except AttributeError as e:
+            answer_result.failed(DownloadResult.ErrorCode.ANSWER_PARSING_FAILED, repr(e))
+    else:
+        answer_result.failed(DownloadResult.ErrorCode.ANSWER_TAG_NOT_FOUND)
 
-    return question, answer
