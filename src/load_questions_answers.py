@@ -16,6 +16,11 @@ def parse_args():
     parser.add_argument('--lastname', '-ln', type=str, help='Lastname of the politician to search for')
     # parser.add_argument('--party', '-p', type=str, help='Party of the politician to search for')
 
+    parser.add_argument(
+        '--sort-by', type=str, default='answer', choices=['answer', 'question'],
+        help='Sort by date of question or answer. Can be one of the following: answer question. Defaults to answer.'
+    )
+
     parser.add_argument('--json', action='store_true', help='Output to json instead of csv')
     parser.add_argument('--outdir', '-o', type=str, default='data', help='The directory to save the file to')
     parser.add_argument('--quiet', '-q', action='store_true', help='Do not show progress.')
@@ -72,6 +77,21 @@ def main():
         print(f'Downloading {politician}')
 
     questions_answers = politician.load_questions_answers(verbose=not args.quiet)
+
+    # sort
+    if args.sort_by.lower().startswith('answer'):
+        def _key_function(qa):
+            return qa.answer_date
+        if not args.quiet:
+            print('sorting by answer')
+    elif args.sort_by.lower().startswith('question'):
+        def _key_function(qa):
+            return qa.question_date
+        if not args.quiet:
+            print('sorting by question')
+    else:
+        raise ValueError('Invalid sort option: {}'.format(args.sort_by))
+    questions_answers = list(sorted(questions_answers, key=_key_function))
 
     os.makedirs('data', exist_ok=True)
     ending = 'json' if args.json else 'csv'
