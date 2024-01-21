@@ -134,7 +134,7 @@ def _parse_tag(tag, result):
         except AttributeError as e:
             result.failed(DownloadResult.ErrorCode.PARSING_FAILED, repr(e))
     else:
-        result.failed(DownloadResult.ErrorCode.TAG_NOT_FOUND)
+        result.failed(DownloadResult.ErrorCode.TAG_NOT_FOUND, 'tag not found')
 
 
 def parse_question_answer(content, question_result: DownloadResult, answer_result: DownloadResult, info_result: DownloadResult):
@@ -153,4 +153,24 @@ def parse_question_answer(content, question_result: DownloadResult, answer_resul
 
     info_tag = soup.find('div', {'class': 'tile__politician__info'})
     _parse_tag(info_tag, info_result)
+
+
+def print_questions_answers(questions_answers):
+    for question, answer, info in questions_answers:
+        print('\n' + '-' * 50)
+        print('\nurl:', question.url)
+        if info.ok():
+            print(info.content)
+        else:
+            print(info.error_code, info.error_text)
+        print('FRAGE:')
+        if question.ok():
+            print(question.content)
+        else:
+            print(question.error_code, question.error_text)
+        print('ANTWORT:')
+        if answer.ok():
+            print(answer.content)
+        else:
+            print(answer.error_code, answer.error_text)
 
