@@ -18,7 +18,7 @@ def parse_args():
 
     parser.add_argument('--json', action='store_true', help='Output to json instead of csv')
     parser.add_argument('--outdir', '-o', type=str, default='data', help='The directory to save the file to')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Show progress.')
+    parser.add_argument('--quiet', '-q', action='store_true', help='Do not show progress.')
 
     return parser, parser.parse_args()
 
@@ -68,10 +68,10 @@ def main():
     else:
         politician = choose_from_list(politician_search_result)
 
-    if args.verbose:
+    if not args.quiet:
         print(f'Downloading {politician}')
 
-    questions_answers = politician.load_questions_answers(verbose=args.verbose)
+    questions_answers = politician.load_questions_answers(verbose=not args.quiet)
 
     os.makedirs('data', exist_ok=True)
     ending = 'json' if args.json else 'csv'
@@ -83,7 +83,7 @@ def main():
     else:
         questions_answers_to_csv(filename, questions_answers)
 
-    if args.verbose:
+    if not args.quiet:
         print('Saved result in', filename)
 
 
