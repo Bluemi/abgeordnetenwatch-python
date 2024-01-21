@@ -1,6 +1,5 @@
-import enum
 import html.parser
-from typing import Optional, Tuple
+from typing import List
 
 from bs4 import BeautifulSoup
 
@@ -65,114 +64,88 @@ class QuestionAnswerParser(html.parser.HTMLParser):
                 self.question = ' '.join(t for t in data.strip().replace('\n', ' ').split(' ') if t)
 
 
-class DownloadResult:
-    class ErrorCode(enum.Enum):
-        OK = 0
-        UNINITIALIZED = 1
-        PAGE_DOWNLOAD_FAILED = 2
-        PARSING_FAILED = 3
-        TAG_NOT_FOUND = 4
-
-    def __init__(self, content: str = None, url: str = None, error_code: int = ErrorCode.UNINITIALIZED, error_text: str = None):
-        self.content = content
+class QuestionAnswerResult:
+    def __init__(self, url: str):
         self.url = url
-        self.error_code = error_code
-        self.error_text = error_text
+        self.question = None
+        self.question_addition = None
+        self.answer = None
+        self.question_info = None
+        self.answer_info = None
+        self.errors = []
 
-    def ok(self):
-        return self.error_code == DownloadResult.ErrorCode.OK
+    def __repr__(self):
+        return ('QuestionAnswerResult(url={}, question_info={}, question={}, question_addition={}, '
+                'answer_info={}, answer={})').format(
+            self.url, self.question_info, self.question, self.question_addition, self.answer_info, self.answer
+        )
 
-    def set_content(self, content: str = None):
-        self.content = content
-        self.error_code = DownloadResult.ErrorCode.OK
-
-    def failed(self, error_code: ErrorCode, error_text: str):
-        self.error_code = error_code
-        self.error_text = error_text
-
-    def merge(self, other):
-        self.url = self.url or other.url
-        if self.content and other.content:
-            self.content = ' '.join((self.content, other.content))
-        else:
-            self.content = self.content or other.content
-        if self.error_code == DownloadResult.ErrorCode.OK or other.error_code == DownloadResult.ErrorCode.OK:
-            self.error_code = DownloadResult.ErrorCode.OK
-            self.error_text = None
+    def __str__(self):
+        return ('url={}\n  question_info={}\n  question={}\n  question_addition={}\n  answer_info={}\n  answer={}'
+                .format(self.url, self.question_info, self.question, self.question_addition, self.answer_info,
+                        self.answer)
+                )
 
 
-def download_question_answer(url) -> Tuple[DownloadResult, DownloadResult, DownloadResult]:
-    question_download_result = DownloadResult(url=url)
-    answer_download_result = DownloadResult(url=url)
-    info_download_result = DownloadResult(url=url)
+def download_question_answer(url) -> QuestionAnswerResult:
+    result = QuestionAnswerResult(url)
     r = requests.get(url)
     if r.ok:
-        parse_question_answer(r.text, question_download_result, answer_download_result, info_download_result)
+        parse_question_answer(r.text, result)
     else:
-        question_download_result.failed(
-            DownloadResult.ErrorCode.PAGE_DOWNLOAD_FAILED, f'Page download failed with code {r.status_code}'
-        )
-        answer_download_result.failed(
-            DownloadResult.ErrorCode.PAGE_DOWNLOAD_FAILED, f'Page download failed with code {r.status_code}'
-        )
-        info_download_result.failed(
-            DownloadResult.ErrorCode.PAGE_DOWNLOAD_FAILED, f'Page download failed with code {r.status_code}'
-        )
-    return question_download_result, answer_download_result, info_download_result
+        result.errors.append(f'Page download failed with code {r.status_code}')
+    return result
 
 
 def normalize_text(text):
     return ' '.join(filter(bool, text.strip().replace('\n', ' ').split(' ')))
 
 
-def _parse_tag(tag, result):
+def _parse_tag(tag):
     if tag:
-        try:
-            text = ' '.join(c.text for c in tag.children)
-            question = normalize_text(text)
-            result.set_content(question)
-        except AttributeError as e:
-            result.failed(DownloadResult.ErrorCode.PARSING_FAILED, repr(e))
+        text = ' '.join(c.text for c in tag.children)
+        return normalize_text(text)
     else:
-        result.failed(DownloadResult.ErrorCode.TAG_NOT_FOUND, 'tag not found')
+        return None
 
 
-def parse_question_answer(content, question_result: DownloadResult, answer_result: DownloadResult, info_result: DownloadResult):
+def parse_question_answer(content, qa_result: QuestionAnswerResult):
     soup = BeautifulSoup(content, 'html.parser')
 
-    question_tag = soup.find('div', {'class': 'tile__question-text'})
-    _parse_tag(question_tag, question_result)
+    main_article = soup.find_all('article', {'itemtype': 'https://schema.org/Question'})[0]
 
-    tmp_question_result = DownloadResult()
-    question_tag2 = soup.find('h1', {'class': 'tile__question__teaser'})
-    _parse_tag(question_tag2, tmp_question_result)
-    question_result.merge(tmp_question_result)
+    main_question_tag = main_article.find('h1', {'class': 'tile__question__teaser'})
+    qa_result.question = _parse_tag(main_question_tag)
 
-    answer_tag = soup.find('div', {'class': 'question-answer__text'})
-    _parse_tag(answer_tag, answer_result)
+    addition_question_tag = main_article.find('div', {'class': 'tile__question-text'})
+    qa_result.question_addition = _parse_tag(addition_question_tag)
 
-    info_tag = soup.find('div', {'class': 'tile__politician__info'})
-    _parse_tag(info_tag, info_result)
+    answer_tag = main_article.find('div', {'class': 'question-answer__text'})
+    qa_result.answer = _parse_tag(answer_tag)
+
+    # infos
+    question_info_tags = main_article.find_all('div', {'class': 'tile__politician__info'})
+    if len(question_info_tags) >= 1:
+        question_info_text = _parse_tag(question_info_tags[0])
+        qa_result.question_info = question_info_text
+    if len(question_info_tags) >= 2:
+        answer_info_text = _parse_tag(question_info_tags[1])
+        qa_result.answer_info = answer_info_text
 
 
-def print_questions_answers(questions_answers):
-    for question, answer, info in questions_answers:
+def print_questions_answers(questions_answers: List[QuestionAnswerResult]):
+    for qa_result in questions_answers:
         print('\n' + '-' * 50)
-        print('\nurl:', question.url)
-        if info.ok():
-            print(info.content)
-        else:
-            print(info.error_code, info.error_text)
+        print('\nurl:', qa_result.url)
+        print(qa_result.question_info)
         print('FRAGE:')
-        if question.ok():
-            print(question.content)
-        else:
-            print(question.error_code, question.error_text)
+        print(qa_result.question)
+        if qa_result.question_addition is not None:
+            print('ERLÄUTERUNG:')
+            print(qa_result.question_addition)
         print('ANTWORT:')
-        if answer.ok():
-            print(answer.content)
-        elif answer.error_code == DownloadResult.ErrorCode.TAG_NOT_FOUND:
-            print('-')
+        print(qa_result.answer_info)
+        if qa_result.answer is not None:
+            print(qa_result.answer)
         else:
-            print(answer.error_code, answer.error_text)
-
+            print('<keine Antwort>')

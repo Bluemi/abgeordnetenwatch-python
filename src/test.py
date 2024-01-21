@@ -2,7 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 
 import politicans
-from utils import parse_question_answer, DownloadResult, print_questions_answers
+import utils
+from utils import print_questions_answers
 
 
 def main():
@@ -26,22 +27,25 @@ def main2():
     print_questions_answers(questions_answers)
 
 
+def main4():
+    result = utils.download_question_answer('https://www.abgeordnetenwatch.de/profile/joana-cotar/fragen-antworten/hallo-frau-cotar-kaeme-fuer-sie-aufgrund-der-aktuellen-ereignisse-eine-mitgliedschaft-im-bsw-in-frage')
+    print(str(result))
+
+    print('-' * 50)
+
+    result = utils.download_question_answer('https://www.abgeordnetenwatch.de/profile/astrid-wallmann/fragen-antworten/wie-kann-die-finanzielle-ungerechtigkeit-der-krankenversicherungen-fuer-gesunde-bzw-schwerbehinderte-geloest')
+    print(str(result))
+
+    print('-' * 50)
+
+    result = utils.download_question_answer('https://www.abgeordnetenwatch.de/profile/markus-ferber/fragen-antworten/welche-massnahmen-gegen-geldwaesche-waeren-ihrer-meinung-nach-zielfuehrender-als-die-limitierung-der-hoehe-von')
+    print(str(result))
+
+
 def download_page():
     r = requests.get('https://www.abgeordnetenwatch.de')
     with open('pages/test3.html', 'w') as f:
         f.write(r.text)
-
-
-def test_page_parsing(text):
-    question_download_result = DownloadResult()
-    answer_download_result = DownloadResult()
-    info_download_result = DownloadResult()
-
-    parse_question_answer(text, question_download_result, answer_download_result, info_download_result)
-
-    print(question_download_result.content)
-    # print('#' * 20)
-    # print(answer_download_result.content)
 
 
 def main3():
@@ -49,8 +53,7 @@ def main3():
         with open(page, 'r') as f:
             text = f.read()
         print('page:', page)
-        test_page_parsing(text)
 
 
 if __name__ == '__main__':
-    main2()
+    main4()
