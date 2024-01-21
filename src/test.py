@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 
-import politicans
+import politicians
 import utils
 from utils import print_questions_answers
 
@@ -20,7 +20,7 @@ def main():
 
 
 def main2():
-    example_politician = politicans.get_politicians(first_name='', last_name='')[0]
+    example_politician = politicians.get_politicians(first_name='', last_name='')[0]
     # print(example_politician)
     questions_answers = example_politician.load_questions_answers(verbose=True)
 

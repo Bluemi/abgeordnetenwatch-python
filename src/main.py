@@ -4,11 +4,11 @@
 import json
 from pprint import pprint
 
-import politicans
+import politicians
 
 
 def main_api():
-    example_politician = politicans.get_politicians(first_name='Julian', last_name='Schwarze')[0]
+    example_politician = politicians.get_politicians(first_name='Julian', last_name='Schwarze')[0]
     questions_answers = example_politician.load_questions_answers()
 
     for question, answer in questions_answers:

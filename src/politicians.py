@@ -56,7 +56,7 @@ class Politician:
         else:
             return '{}/{}?page={}'.format(self.get_url(), 'fragen-antworten', page)
 
-    def get_questions_answers_urls(self):
+    def get_questions_answers_urls(self, verbose=False):
         page = 0
         parser = QuestionsAnswersParser()
         while True:
@@ -75,11 +75,13 @@ class Politician:
             else:
                 break
 
-        print('{} questions answers found'.format(len(parser.hrefs)))
+        if verbose:
+            print('{} questions answers found'.format(len(parser.hrefs)))
+
         return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
 
     def load_questions_answers(self, verbose=False) -> List[QuestionAnswerResult]:
-        urls = self.get_questions_answers_urls()
+        urls = self.get_questions_answers_urls(verbose=verbose)
         if verbose:
             urls = tqdm.tqdm(urls, desc='Loading questions answers', ascii=True)
         return [download_question_answer(url) for url in urls]
