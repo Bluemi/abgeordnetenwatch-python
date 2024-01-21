@@ -22,7 +22,7 @@ def main2():
     example_politician = politicans.get_politicians(first_name='Julian', last_name='Schwarze')[0]
     questions_answers = example_politician.load_questions_answers()
 
-    for question, answer in questions_answers:
+    for question, answer, info in questions_answers:
         print('\n' + '#' * 20, question.url)
         if question.ok():
             print(question.content)
@@ -33,6 +33,11 @@ def main2():
             print(answer.content)
         else:
             print(answer.error_code, answer.error_text)
+        print('INFO:')
+        if info.ok():
+            print(info.content)
+        else:
+            print(info.error_code, info.error_text)
 
 
 def download_page():

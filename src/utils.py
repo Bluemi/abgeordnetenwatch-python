@@ -101,12 +101,13 @@ class DownloadResult:
             self.error_text = None
 
 
-def download_question_answer(url) -> Tuple[DownloadResult, DownloadResult]:
+def download_question_answer(url) -> Tuple[DownloadResult, DownloadResult, DownloadResult]:
     question_download_result = DownloadResult(url=url)
     answer_download_result = DownloadResult(url=url)
+    info_download_result = DownloadResult(url=url)
     r = requests.get(url)
     if r.ok:
-        parse_question_answer(r.text, question_download_result, answer_download_result)
+        parse_question_answer(r.text, question_download_result, answer_download_result, info_download_result)
     else:
         question_download_result.failed(
             DownloadResult.ErrorCode.PAGE_DOWNLOAD_FAILED, f'Page download failed with code {r.status_code}'
@@ -114,7 +115,10 @@ def download_question_answer(url) -> Tuple[DownloadResult, DownloadResult]:
         answer_download_result.failed(
             DownloadResult.ErrorCode.PAGE_DOWNLOAD_FAILED, f'Page download failed with code {r.status_code}'
         )
-    return question_download_result, answer_download_result
+        info_download_result.failed(
+            DownloadResult.ErrorCode.PAGE_DOWNLOAD_FAILED, f'Page download failed with code {r.status_code}'
+        )
+    return question_download_result, answer_download_result, info_download_result
 
 
 def normalize_text(text):
@@ -133,7 +137,7 @@ def _parse_tag(tag, result):
         result.failed(DownloadResult.ErrorCode.TAG_NOT_FOUND)
 
 
-def parse_question_answer(content, question_result: DownloadResult, answer_result: DownloadResult):
+def parse_question_answer(content, question_result: DownloadResult, answer_result: DownloadResult, info_result: DownloadResult):
     soup = BeautifulSoup(content, 'html.parser')
 
     question_tag = soup.find('div', {'class': 'tile__question-text'})
@@ -146,4 +150,7 @@ def parse_question_answer(content, question_result: DownloadResult, answer_resul
 
     answer_tag = soup.find('div', {'class': 'question-answer__text'})
     _parse_tag(answer_tag, answer_result)
+
+    info_tag = soup.find('div', {'class': 'tile__politician__info'})
+    _parse_tag(info_tag, info_result)
 
