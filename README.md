@@ -1,6 +1,6 @@
 # abgeordnetenwatch-python
 
-Siehe [hier](README_de.md) für die deutsche Version.
+Siehe [hier](README_de.md) für die deutsche Anleitung.
 
 Small utility programs to use the [abgeordnetenwatch-api](https://www.abgeordnetenwatch.de/) in python.
 
