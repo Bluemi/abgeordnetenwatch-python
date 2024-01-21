@@ -23,4 +23,4 @@ python3 src/load_questions_answers.py --firstname "Angela" --lastname "Merkel"
 python3 src/load_questions_answers.py --help
 ```
 
-Das erzeugt eine Datei `data/079137_Angela_Merkel.csv.csv` mit allen Fragen und Antworten der betreffenden Person.
+Das erzeugt eine Datei `data/079137_Angela_Merkel.csv` mit allen Fragen und Antworten der betreffenden Person.
