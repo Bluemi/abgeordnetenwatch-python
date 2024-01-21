@@ -17,7 +17,7 @@ Sie können alle [Fragen und Antworten](https://www.abgeordnetenwatch.de/) eines
 
 ```sh
 # -v um mehr informationen während des Downloads anzuzeigen
-python3 src/load_questions_answers.py -v --firstname "Angela" --lastname "Merkel"
+python3 src/load_questions_answers.py --firstname "Angela" --lastname "Merkel"
 
 # folgender Befehl zeigt mehr informationen
 python3 src/load_questions_answers.py --help

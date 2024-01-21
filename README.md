@@ -19,7 +19,7 @@ You can download all questions and answers from a politician with the following 
 
 ```sh
 # -v for verbose output
-python3 src/load_questions_answers.py -v --firstname "Angela" --lastname "Merkel"
+python3 src/load_questions_answers.py --firstname "Angela" --lastname "Merkel"
 
 # try this for more options
 python3 src/load_questions_answers.py --help
