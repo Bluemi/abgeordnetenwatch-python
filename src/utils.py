@@ -171,6 +171,8 @@ def print_questions_answers(questions_answers):
         print('ANTWORT:')
         if answer.ok():
             print(answer.content)
+        elif answer.error_code == DownloadResult.ErrorCode.TAG_NOT_FOUND:
+            print('-')
         else:
             print(answer.error_code, answer.error_text)
 
