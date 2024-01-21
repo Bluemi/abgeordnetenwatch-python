@@ -13,8 +13,7 @@ pip install -r requirements.txt
 
 ## Nutzung
 
-You can download all questions and answers from a politician with the following script:
-Sie können alle [Fragen und Antworten](https://www.abgeordnetenwatch.de/) eines Politikers mit dem folgenden Skript herunterladen.
+Sie können alle [Fragen und Antworten](https://www.abgeordnetenwatch.de/) eines Politikers mit dem folgenden Skript herunterladen:
 
 ```sh
 # -v um mehr informationen während des Downloads anzuzeigen
