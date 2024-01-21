@@ -183,6 +183,21 @@ def questions_answers_to_json(questions_answers: List[QuestionAnswerResult]):
     return [qa.to_json() for qa in questions_answers]
 
 
+def questions_answers_to_txt(filename, questions_answers: List[QuestionAnswerResult]):
+    with open(filename, 'w') as f:
+        for qa in questions_answers:
+            f.write('\n' + '-' * 50 + '\n\n')
+            f.write('Frage vom {}:\n'.format(qa.get_question_date()))
+            f.write(qa.question + '\n')
+            if qa.question_addition:
+                f.write('\nErläuterungen:\n')
+                f.write(qa.question_addition + '\n')
+            if qa.answer:
+                f.write('\nAntwort vom {}:\n'.format(qa.get_answer_date()))
+                f.write(qa.answer + '\n')
+
+
+
 def questions_answers_to_csv(filename, questions_answers: List[QuestionAnswerResult]):
     with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['url', 'question_date', 'question', 'question_addition', 'answer_date', 'answer']

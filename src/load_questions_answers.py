@@ -4,26 +4,29 @@ import os
 import sys
 
 import politicians
-from utils import questions_answers_to_csv, questions_answers_to_json
+from utils import questions_answers_to_csv, questions_answers_to_json, questions_answers_to_txt
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Download questions/answers from politicians from abgeordnetenwatch.de and export to csv or json.'
     )
-    parser.add_argument('--id', '-i', type=int, help='Id of the politician to search for')
-    parser.add_argument('--firstname', '-fn', type=str, help='Firstname of the politician to search for')
-    parser.add_argument('--lastname', '-ln', type=str, help='Lastname of the politician to search for')
+    parser.add_argument('--id', '-i', type=int, help='Id of the politician to search for.')
+    parser.add_argument('--firstname', '-fn', type=str, help='Firstname of the politician to search for.')
+    parser.add_argument('--lastname', '-ln', type=str, help='Lastname of the politician to search for.')
     # parser.add_argument('--party', '-p', type=str, help='Party of the politician to search for')
 
     parser.add_argument(
         '--sort-by', type=str, default='answer', choices=['answer', 'question'],
         help='Sort by date of question or answer. Can be one of the following: answer question. Defaults to answer.'
     )
-    parser.add_argument('--n-threads', '-t', type=int, default=1, help='Number of threads to use for downloading')
+    parser.add_argument('--n-threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
 
-    parser.add_argument('--json', action='store_true', help='Output to json instead of csv')
-    parser.add_argument('--outdir', '-o', type=str, default='data', help='The directory to save the file to')
+    parser.add_argument(
+        '--format', type=str, default='csv', choices=['csv', 'json', 'txt'],
+        help='Output format to use. One of the following: csv, json, txt. Defaults to csv.'
+    )
+    parser.add_argument('--outdir', '-o', type=str, default='data', help='The directory to save the file to.')
     parser.add_argument('--quiet', '-q', action='store_true', help='Do not show progress.')
 
     return parser, parser.parse_args()
@@ -95,14 +98,16 @@ def main():
     questions_answers = list(sorted(questions_answers, key=_key_function))
 
     os.makedirs('data', exist_ok=True)
-    ending = 'json' if args.json else 'csv'
+    ending = args.format
     filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
-    if args.json:
+    if args.format == 'csv':
+        questions_answers_to_csv(filename, questions_answers)
+    elif args.format == 'json':
         with open(filename, 'w') as f:
             data = questions_answers_to_json(questions_answers)
             json.dump(data, f, indent=2)
-    else:
-        questions_answers_to_csv(filename, questions_answers)
+    elif args.format == 'txt':
+        questions_answers_to_txt(filename, questions_answers)
 
     if not args.quiet:
         print('Saved result in', filename)
