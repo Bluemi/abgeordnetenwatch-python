@@ -1,3 +1,4 @@
+import concurrent.futures
 from typing import List
 
 import tqdm
@@ -80,11 +81,20 @@ class Politician:
 
         return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
 
-    def load_questions_answers(self, verbose=False) -> List[QuestionAnswerResult]:
+    def load_questions_answers(self, verbose=False, n_threads=1) -> List[QuestionAnswerResult]:
         urls = self.get_questions_answers_urls(verbose=verbose)
-        if verbose:
-            urls = tqdm.tqdm(urls, desc='Loading questions answers', ascii=True)
-        return [download_question_answer(url) for url in urls]
+        if n_threads == 1:
+            if verbose:
+                urls = tqdm.tqdm(urls, desc='Loading questions answers', ascii=True)
+            return [download_question_answer(url) for url in urls]
+        elif n_threads > 1:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=n_threads) as executor:
+                futures = [executor.submit(download_question_answer, url=url) for url in urls]
+                if verbose:
+                    futures = tqdm.tqdm(futures, desc='Loading questions answers', ascii=True)
+                return [f.result() for f in futures]
+        else:
+            raise ValueError('n_threads must be 1 or greater, got {}'.format(n_threads))
 
     def get_label(self):
         return '{} {}'.format(self.first_name, self.last_name)

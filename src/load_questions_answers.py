@@ -20,6 +20,7 @@ def parse_args():
         '--sort-by', type=str, default='answer', choices=['answer', 'question'],
         help='Sort by date of question or answer. Can be one of the following: answer question. Defaults to answer.'
     )
+    parser.add_argument('--n-threads', '-t', type=int, default=1, help='Number of threads to use for downloading')
 
     parser.add_argument('--json', action='store_true', help='Output to json instead of csv')
     parser.add_argument('--outdir', '-o', type=str, default='data', help='The directory to save the file to')
@@ -76,7 +77,7 @@ def main():
     if not args.quiet:
         print(f'Downloading {politician}')
 
-    questions_answers = politician.load_questions_answers(verbose=not args.quiet)
+    questions_answers = politician.load_questions_answers(verbose=not args.quiet, n_threads=args.n_threads)
 
     # sort
     if args.sort_by.lower().startswith('answer'):
