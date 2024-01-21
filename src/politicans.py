@@ -1,5 +1,6 @@
 from typing import List
 
+import tqdm
 import requests
 from party import Party
 from utils import QuestionsAnswersParser, download_question_answer, QuestionAnswerResult
@@ -30,6 +31,15 @@ class Politician:
             last_name=data['last_name'],
             party=Party.from_json(data.get('party')),
             residence=data.get('residence')
+        )
+
+    def to_json(self):
+        party_data = self.party.to_json() if self.party else None
+        return dict(
+            id=self.id,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            party=party_data,
         )
 
     def get_api_url(self):
@@ -68,8 +78,11 @@ class Politician:
         print('{} questions answers found'.format(len(parser.hrefs)))
         return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
 
-    def load_questions_answers(self) -> List[QuestionAnswerResult]:
-        return [download_question_answer(url) for url in self.get_questions_answers_urls()]
+    def load_questions_answers(self, verbose=False) -> List[QuestionAnswerResult]:
+        urls = self.get_questions_answers_urls()
+        if verbose:
+            urls = tqdm.tqdm(urls, desc='Loading questions answers', ascii=True)
+        return [download_question_answer(url) for url in urls]
 
     def get_label(self):
         return '{} {}'.format(self.first_name, self.last_name)

@@ -20,11 +20,13 @@ def main():
 
 
 def main2():
-    example_politician = politicans.get_politicians(first_name='')[0]
+    example_politician = politicans.get_politicians(first_name='', last_name='')[0]
     # print(example_politician)
-    questions_answers = example_politician.load_questions_answers()
+    questions_answers = example_politician.load_questions_answers(verbose=True)
 
     print_questions_answers(questions_answers)
+
+    utils.questions_answers_to_csv('data/amira_mohamed_ali.csv', questions_answers)
 
 
 def main4():
@@ -56,4 +58,4 @@ def main3():
 
 
 if __name__ == '__main__':
-    main4()
+    main2()

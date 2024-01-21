@@ -1,3 +1,4 @@
+import csv
 import html.parser
 from typing import List
 
@@ -67,12 +68,22 @@ class QuestionAnswerParser(html.parser.HTMLParser):
 class QuestionAnswerResult:
     def __init__(self, url: str):
         self.url = url
+        self.question_info = None
         self.question = None
         self.question_addition = None
-        self.answer = None
-        self.question_info = None
         self.answer_info = None
+        self.answer = None
         self.errors = []
+
+    def to_json(self):
+        return dict(
+            url=self.url,
+            question=self.question,
+            question_addition=self.question_addition,
+            answer=self.answer,
+            question_info=self.question_info,
+            answer_info=self.answer_info,
+        )
 
     def __repr__(self):
         return ('QuestionAnswerResult(url={}, question_info={}, question={}, question_addition={}, '
@@ -149,3 +160,18 @@ def print_questions_answers(questions_answers: List[QuestionAnswerResult]):
             print(qa_result.answer)
         else:
             print('<keine Antwort>')
+
+
+def questions_answers_to_json(questions_answers: List[QuestionAnswerResult]):
+    return [qa.to_json() for qa in questions_answers]
+
+
+def questions_answers_to_csv(filename, questions_answers: List[QuestionAnswerResult]):
+    with open(filename, 'w', newline='') as csvfile:
+        fieldnames = ['url', 'question_info', 'question', 'question_addition', 'answer_info', 'answer']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+
+        for qa in questions_answers:
+            writer.writerow(qa.to_json())

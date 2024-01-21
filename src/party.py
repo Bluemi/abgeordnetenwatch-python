@@ -15,3 +15,9 @@ class Party:
 
     def __repr__(self):
         return 'Party(id={}, label={})'.format(self.id, self.label)
+
+    def to_json(self):
+        return dict(
+            id=self.id,
+            label=self.label,
+        )
