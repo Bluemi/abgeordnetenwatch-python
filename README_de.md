@@ -4,7 +4,6 @@ Einige hilfreiche Skripte, um auf die [Abgeordnetenwatch-API](https://www.abgeor
 
 ## Installation
 
-To use this script install python3 and pip.
 Um dieses Skript verwenden zu können, müssen Sie [python3](https://www.python.org/) und [pip](https://packaging.python.org/en/latest/tutorials/installing-packages/) installiert haben.
 
 Danach Abhängigkeiten mit folgendem Befehl installieren

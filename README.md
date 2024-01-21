@@ -6,7 +6,7 @@ Small utility programs to use the [abgeordnetenwatch-api](https://www.abgeordnet
 
 ## Installation
 
-To use this script install python3 and pip.
+To use this script install [python3](../blob/master/LICENSE) and [pip](https://packaging.python.org/en/latest/tutorials/installing-packages/).
 
 Install requirements with
 ```sh
