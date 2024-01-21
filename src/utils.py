@@ -70,10 +70,8 @@ class DownloadResult:
         OK = 0
         UNINITIALIZED = 1
         PAGE_DOWNLOAD_FAILED = 2
-        QUESTION_PARSING_FAILED = 3
-        ANSWER_PARSING_FAILED = 4
-        ANSWER_TAG_NOT_FOUND = 5
-        QUESTION_TAG_NOT_FOUND = 6
+        PARSING_FAILED = 3
+        TAG_NOT_FOUND = 4
 
     def __init__(self, content: str = None, url: str = None, error_code: int = ErrorCode.UNINITIALIZED, error_text: str = None):
         self.content = content
@@ -92,6 +90,16 @@ class DownloadResult:
         self.error_code = error_code
         self.error_text = error_text
 
+    def merge(self, other):
+        self.url = self.url or other.url
+        if self.content and other.content:
+            self.content = ' '.join((self.content, other.content))
+        else:
+            self.content = self.content or other.content
+        if self.error_code == DownloadResult.ErrorCode.OK or other.error_code == DownloadResult.ErrorCode.OK:
+            self.error_code = DownloadResult.ErrorCode.OK
+            self.error_text = None
+
 
 def download_question_answer(url) -> Tuple[DownloadResult, DownloadResult]:
     question_download_result = DownloadResult(url=url)
@@ -109,25 +117,33 @@ def download_question_answer(url) -> Tuple[DownloadResult, DownloadResult]:
     return question_download_result, answer_download_result
 
 
-def parse_question_answer(content, question_result, answer_result):
-    soup = BeautifulSoup(content, 'html.parser')
-    question_tag = soup.find('div', {'class': 'tile__question-text'})
-    if question_tag:
+def normalize_text(text):
+    return ' '.join(filter(bool, text.strip().replace('\n', ' ').split(' ')))
+
+
+def _parse_tag(tag, result):
+    if tag:
         try:
-            question = ' '.join(filter(bool, question_tag.div.p.string.strip().split(' ')))
-            question_result.set_content(question)
+            text = ' '.join(c.text for c in tag.children)
+            question = normalize_text(text)
+            result.set_content(question)
         except AttributeError as e:
-            question_result.failed(DownloadResult.ErrorCode.QUESTION_PARSING_FAILED, repr(e))
+            result.failed(DownloadResult.ErrorCode.PARSING_FAILED, repr(e))
     else:
-        question_result.failed(DownloadResult.ErrorCode.ANSWER_TAG_NOT_FOUND)
+        result.failed(DownloadResult.ErrorCode.TAG_NOT_FOUND)
+
+
+def parse_question_answer(content, question_result: DownloadResult, answer_result: DownloadResult):
+    soup = BeautifulSoup(content, 'html.parser')
+
+    question_tag = soup.find('div', {'class': 'tile__question-text'})
+    _parse_tag(question_tag, question_result)
+
+    tmp_question_result = DownloadResult()
+    question_tag2 = soup.find('h1', {'class': 'tile__question__teaser'})
+    _parse_tag(question_tag2, tmp_question_result)
+    question_result.merge(tmp_question_result)
 
     answer_tag = soup.find('div', {'class': 'question-answer__text'})
-    if answer_tag:
-        try:
-            answer = ' '.join(filter(bool, answer_tag.div.text.strip().split(' ')))
-            answer_result.set_content(answer)
-        except AttributeError as e:
-            answer_result.failed(DownloadResult.ErrorCode.ANSWER_PARSING_FAILED, repr(e))
-    else:
-        answer_result.failed(DownloadResult.ErrorCode.ANSWER_TAG_NOT_FOUND)
+    _parse_tag(answer_tag, answer_result)
 

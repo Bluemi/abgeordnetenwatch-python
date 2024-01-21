@@ -1,6 +1,8 @@
+import requests
 from bs4 import BeautifulSoup
 
 import politicans
+from utils import parse_question_answer, DownloadResult
 
 
 def main():
@@ -31,6 +33,31 @@ def main2():
             print(answer.content)
         else:
             print(answer.error_code, answer.error_text)
+
+
+def download_page():
+    r = requests.get('https://www.abgeordnetenwatch.de/profile/julian-schwarze/fragen-antworten/haben-sie-in-den-letzten-5-jahren-vortragshonorare/beratungshonorare-oder-andere-finanzielle-unterstuetzung')
+    with open('pages/test2.html', 'w') as f:
+        f.write(r.text)
+
+
+def test_page_parsing(text):
+    question_download_result = DownloadResult()
+    answer_download_result = DownloadResult()
+
+    parse_question_answer(text, question_download_result, answer_download_result)
+
+    print(question_download_result.content)
+    # print('#' * 20)
+    # print(answer_download_result.content)
+
+
+def main3():
+    for page in ['pages/test1.html', 'pages/test2.html']:
+        with open(page, 'r') as f:
+            text = f.read()
+        print('page:', page)
+        test_page_parsing(text)
 
 
 if __name__ == '__main__':
