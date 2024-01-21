@@ -1,6 +1,7 @@
 import csv
+import datetime
 import html.parser
-from typing import List
+from typing import List, Optional
 
 from bs4 import BeautifulSoup
 
@@ -68,10 +69,10 @@ class QuestionAnswerParser(html.parser.HTMLParser):
 class QuestionAnswerResult:
     def __init__(self, url: str):
         self.url = url
-        self.question_info = None
+        self.question_date = None
         self.question = None
         self.question_addition = None
-        self.answer_info = None
+        self.answer_date = None
         self.answer = None
         self.errors = []
 
@@ -81,20 +82,27 @@ class QuestionAnswerResult:
             question=self.question,
             question_addition=self.question_addition,
             answer=self.answer,
-            question_info=self.question_info,
-            answer_info=self.answer_info,
+            question_date=self.get_question_date(),
+            answer_date=self.get_answer_date(),
         )
 
+    def get_question_date(self) -> str:
+        return self.question_date.strftime('%d.%m.%Y') if self.question_date is not None else 'XX.XX.XXXX'
+
+    def get_answer_date(self) -> str:
+        return self.answer_date.strftime('%d.%m.%Y') if self.answer_date is not None else 'XX.XX.XXXX'
+
     def __repr__(self):
-        return ('QuestionAnswerResult(url={}, question_info={}, question={}, question_addition={}, '
-                'answer_info={}, answer={})').format(
-            self.url, self.question_info, self.question, self.question_addition, self.answer_info, self.answer
+        return ('QuestionAnswerResult(url={}, question_date={}, question={}, question_addition={}, '
+                'answer_date={}, answer={})').format(
+            self.url, self.get_question_date(), self.question, self.question_addition, self.get_answer_date(),
+            self.answer
         )
 
     def __str__(self):
-        return ('url={}\n  question_info={}\n  question={}\n  question_addition={}\n  answer_info={}\n  answer={}'
-                .format(self.url, self.question_info, self.question, self.question_addition, self.answer_info,
-                        self.answer)
+        return ('url={}\n  question_date={}\n  question={}\n  question_addition={}\n  answer_date={}\n  answer={}'
+                .format(self.url, self.get_question_date(), self.question, self.question_addition,
+                        self.get_answer_date(), self.answer)
                 )
 
 
@@ -120,6 +128,13 @@ def _parse_tag(tag):
         return None
 
 
+def date_from_text(text: str) -> Optional[datetime.date]:
+    try:
+        return datetime.datetime.strptime(text[-10:], "%d.%m.%Y").date()
+    except ValueError:
+        return None
+
+
 def parse_question_answer(content, qa_result: QuestionAnswerResult):
     soup = BeautifulSoup(content, 'html.parser')
 
@@ -134,28 +149,30 @@ def parse_question_answer(content, qa_result: QuestionAnswerResult):
     answer_tag = main_article.find('div', {'class': 'question-answer__text'})
     qa_result.answer = _parse_tag(answer_tag)
 
-    # infos
-    question_info_tags = main_article.find_all('div', {'class': 'tile__politician__info'})
-    if len(question_info_tags) >= 1:
-        question_info_text = _parse_tag(question_info_tags[0])
-        qa_result.question_info = question_info_text
-    if len(question_info_tags) >= 2:
-        answer_info_text = _parse_tag(question_info_tags[1])
-        qa_result.answer_info = answer_info_text
+    # date infos
+    question_date_tags = main_article.find_all('div', {'class': 'tile__politician__info'})
+    if len(question_date_tags) >= 1:
+        question_date_text = _parse_tag(question_date_tags[0])
+        if question_date_text:
+            qa_result.question_date = date_from_text(question_date_text)
+    if len(question_date_tags) >= 2:
+        answer_date_text = _parse_tag(question_date_tags[1])
+        if answer_date_text is not None:
+            qa_result.answer_date = date_from_text(answer_date_text)
 
 
 def print_questions_answers(questions_answers: List[QuestionAnswerResult]):
     for qa_result in questions_answers:
         print('\n' + '-' * 50)
         print('\nurl:', qa_result.url)
-        print(qa_result.question_info)
+        print(qa_result.get_question_date())
         print('FRAGE:')
         print(qa_result.question)
         if qa_result.question_addition is not None:
             print('ERLÄUTERUNG:')
             print(qa_result.question_addition)
         print('ANTWORT:')
-        print(qa_result.answer_info)
+        print(qa_result.get_answer_date())
         if qa_result.answer is not None:
             print(qa_result.answer)
         else:
@@ -168,7 +185,7 @@ def questions_answers_to_json(questions_answers: List[QuestionAnswerResult]):
 
 def questions_answers_to_csv(filename, questions_answers: List[QuestionAnswerResult]):
     with open(filename, 'w', newline='') as csvfile:
-        fieldnames = ['url', 'question_info', 'question', 'question_addition', 'answer_info', 'answer']
+        fieldnames = ['url', 'question_date', 'question', 'question_addition', 'answer_date', 'answer']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         writer.writeheader()
