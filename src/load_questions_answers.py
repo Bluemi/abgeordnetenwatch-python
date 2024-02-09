@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import sys
+import datetime
 
 import politicians
 from utils import questions_answers_to_csv, questions_answers_to_json, questions_answers_to_txt
@@ -17,7 +18,7 @@ def parse_args():
     # parser.add_argument('--party', '-p', type=str, help='Party of the politician to search for')
 
     parser.add_argument(
-        '--sort-by', type=str, default='answer', choices=['answer', 'question'],
+        '--sort-by', type=str, default='question', choices=['answer', 'question'],
         help='Sort by date of question or answer. Can be one of the following: answer question. Defaults to answer.'
     )
     parser.add_argument('--n-threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
@@ -85,12 +86,18 @@ def main():
     # sort
     if args.sort_by.lower().startswith('answer'):
         def _key_function(qa):
-            return qa.answer_date
+            if qa.answer_date:
+                return qa.answer_date
+            if qa.question_date:
+                return qa.question_date
+            return datetime.date.today()
         if not args.quiet:
             print('sorting by answer')
     elif args.sort_by.lower().startswith('question'):
         def _key_function(qa):
-            return qa.question_date
+            if qa.question_date:
+                return qa.question_date
+            return datetime.date.today()
         if not args.quiet:
             print('sorting by question')
     else:
