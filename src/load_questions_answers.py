@@ -5,12 +5,17 @@ import sys
 import datetime
 
 import politicians
-from utils import questions_answers_to_csv, questions_answers_to_json, questions_answers_to_txt
+import utils
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Download questions/answers from politicians from abgeordnetenwatch.de and export to csv or json.'
+    )
+    parser.add_argument(
+        '--url', type=str,
+        help='Url of the politician to search for. '
+             'For example https://www.abgeordnetenwatch.de/profile/firstname-lastname'
     )
     parser.add_argument('--id', '-i', type=int, help='Id of the politician to search for.')
     parser.add_argument('--firstname', '-fn', type=str, help='Firstname of the politician to search for.')
@@ -56,32 +61,38 @@ def choose_from_list(politician_list) -> politicians.Politician:
 def main():
     parser, args = parse_args()
 
-    filter_args = {}
-    if args.firstname is not None:
-        filter_args['first_name'] = args.firstname
-    if args.lastname is not None:
-        filter_args['last_name'] = args.lastname
-    if args.id is not None:
-        filter_args['id'] = args.id
+    politician = None
 
-    if not filter_args:
-        parser.print_usage()
-        print('Please provide at least --id --firstname or --lastname')
-        sys.exit(1)
-
-    politician_search_result = politicians.get_politicians(**filter_args)
-    if len(politician_search_result) == 0:
-        print('no politician found with the given arguments')
-        sys.exit(1)
-    elif len(politician_search_result) == 1:
-        politician = politician_search_result[0]
+    url = args.url
+    if url is not None:
+        questions_answers = utils.load_questions_answers(url, verbose=not args.quiet, n_threads=args.n_threads)
     else:
-        politician = choose_from_list(politician_search_result)
+        filter_args = {}
+        if args.firstname is not None:
+            filter_args['first_name'] = args.firstname
+        if args.lastname is not None:
+            filter_args['last_name'] = args.lastname
+        if args.id is not None:
+            filter_args['id'] = args.id
 
-    if not args.quiet:
-        print(f'Downloading {politician}')
+        if not filter_args:
+            parser.print_usage()
+            print('Please provide at least --id --firstname or --lastname')
+            sys.exit(1)
 
-    questions_answers = politician.load_questions_answers(verbose=not args.quiet, n_threads=args.n_threads)
+        politician_search_result = politicians.get_politicians(**filter_args)
+        if len(politician_search_result) == 0:
+            print('no politician found with the given arguments')
+            sys.exit(1)
+        elif len(politician_search_result) == 1:
+            politician = politician_search_result[0]
+        else:
+            politician = choose_from_list(politician_search_result)
+
+        if not args.quiet:
+            print(f'Downloading {politician}')
+
+        questions_answers = politician.load_questions_answers(verbose=not args.quiet, n_threads=args.n_threads)
 
     # sort
     if args.sort_by.lower().startswith('answer'):
@@ -106,15 +117,19 @@ def main():
 
     os.makedirs('data', exist_ok=True)
     ending = args.format
-    filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
+    if politician is None:
+        u = [u for u in url.split('/') if u][-1]
+        filename = f'data/{u}.{ending}'
+    else:
+        filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
     if args.format == 'csv':
-        questions_answers_to_csv(filename, questions_answers)
+        utils.questions_answers_to_csv(filename, questions_answers)
     elif args.format == 'json':
         with open(filename, 'w') as f:
-            data = questions_answers_to_json(questions_answers)
+            data = utils.questions_answers_to_json(questions_answers)
             json.dump(data, f, indent=2)
     elif args.format == 'txt':
-        questions_answers_to_txt(filename, questions_answers)
+        utils.questions_answers_to_txt(filename, questions_answers)
 
     if not args.quiet:
         print('Saved result in', filename)
