@@ -199,16 +199,12 @@ def get_questions_answers_urls(url, verbose=False):
     page = 0
     parser = QuestionsAnswersParser(url)
     while True:
-        url = get_questions_answers_url(url, page)
+        page_url = get_questions_answers_url(url, page)
         page += 1
-        r = requests.get(url)
+        r = requests.get(page_url)
         if r.ok:
-            # print('status code {}: {}'.format(page, r.status_code))
             old_count = len(parser.hrefs)
             parser.feed(r.text)
-            # print(old_count, len(parser.hrefs))
-            # for href in parser.hrefs:
-            # print('\t', href)
             if old_count == len(parser.hrefs):
                 break
         else:
