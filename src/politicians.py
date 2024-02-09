@@ -4,7 +4,8 @@ from typing import List
 import tqdm
 import requests
 from party import Party
-from utils import QuestionsAnswersParser, download_question_answer, QuestionAnswerResult
+from utils import QuestionsAnswersParser, download_question_answer, QuestionAnswerResult, get_questions_answers_url, \
+    get_questions_answers_urls, load_questions_answers
 
 
 class Politician:
@@ -51,50 +52,9 @@ class Politician:
         last_name = self.last_name.lower().replace(' ', '-')
         return 'https://www.abgeordnetenwatch.de/profile/{}-{}'.format(first_name, last_name)
 
-    def get_questions_answers_url(self, page=None):
-        if page is None:
-            return '{}/{}'.format(self.get_url(), 'fragen-antworten')
-        else:
-            return '{}/{}?page={}'.format(self.get_url(), 'fragen-antworten', page)
-
-    def get_questions_answers_urls(self, verbose=False):
-        page = 0
-        parser = QuestionsAnswersParser()
-        while True:
-            url = self.get_questions_answers_url(page)
-            page += 1
-            r = requests.get(url)
-            if r.ok:
-                # print('status code {}: {}'.format(page, r.status_code))
-                old_count = len(parser.hrefs)
-                parser.feed(r.text)
-                # print(old_count, len(parser.hrefs))
-                # for href in parser.hrefs:
-                # print('\t', href)
-                if old_count == len(parser.hrefs):
-                    break
-            else:
-                break
-
-        if verbose:
-            print('{} questions answers found'.format(len(parser.hrefs)))
-
-        return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
-
     def load_questions_answers(self, verbose=False, n_threads=1) -> List[QuestionAnswerResult]:
-        urls = self.get_questions_answers_urls(verbose=verbose)
-        if n_threads == 1:
-            if verbose:
-                urls = tqdm.tqdm(urls, desc='Loading questions answers', ascii=True)
-            return [download_question_answer(url) for url in urls]
-        elif n_threads > 1:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=n_threads) as executor:
-                futures = [executor.submit(download_question_answer, url=url) for url in urls]
-                if verbose:
-                    futures = tqdm.tqdm(futures, desc='Loading questions answers', ascii=True)
-                return [f.result() for f in futures]
-        else:
-            raise ValueError('n_threads must be 1 or greater, got {}'.format(n_threads))
+        politician_url = self.get_url()
+        return load_questions_answers(politician_url, verbose=verbose, n_threads=n_threads)
 
     def get_label(self):
         return '{} {}'.format(self.first_name, self.last_name)

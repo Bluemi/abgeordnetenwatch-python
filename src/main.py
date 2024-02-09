@@ -8,13 +8,9 @@ import politicians
 
 
 def main_api():
-    example_politician = politicians.get_politicians(first_name='Julian', last_name='Schwarze')[0]
-    questions_answers = example_politician.load_questions_answers()
-
-    for question, answer in questions_answers:
-        print('Question: ', question)
-        print('\nAnswer: ', answer)
-        print('#'*60)
+    example_politician = politicians.get_politicians(first_name='Eugen', last_name='Schmidt')[0]
+    url = example_politician.get_questions_answers_url(0)
+    print('url:', url)
 
 
 def main_file():

@@ -1,3 +1,4 @@
+import concurrent.futures
 import csv
 import datetime
 import html.parser
@@ -6,6 +7,7 @@ from typing import List, Optional
 from bs4 import BeautifulSoup
 
 import requests
+import tqdm
 
 
 def get_from_key_list(key_list, key, default=None):
@@ -197,7 +199,6 @@ def questions_answers_to_txt(filename, questions_answers: List[QuestionAnswerRes
                 f.write(qa.answer + '\n')
 
 
-
 def questions_answers_to_csv(filename, questions_answers: List[QuestionAnswerResult]):
     with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['url', 'question_date', 'question', 'question_addition', 'answer_date', 'answer']
@@ -207,3 +208,51 @@ def questions_answers_to_csv(filename, questions_answers: List[QuestionAnswerRes
 
         for qa in questions_answers:
             writer.writerow(qa.to_json())
+
+
+def get_questions_answers_url(url, page=None):
+    if page is None:
+        return '{}/{}'.format(url, 'fragen-antworten')
+    else:
+        return '{}/{}?page={}'.format(url, 'fragen-antworten', page)
+
+
+def get_questions_answers_urls(url, verbose=False):
+    page = 0
+    parser = QuestionsAnswersParser()
+    while True:
+        url = get_questions_answers_url(url, page)
+        page += 1
+        r = requests.get(url)
+        if r.ok:
+            # print('status code {}: {}'.format(page, r.status_code))
+            old_count = len(parser.hrefs)
+            parser.feed(r.text)
+            # print(old_count, len(parser.hrefs))
+            # for href in parser.hrefs:
+            # print('\t', href)
+            if old_count == len(parser.hrefs):
+                break
+        else:
+            break
+
+    if verbose:
+        print('{} questions answers found'.format(len(parser.hrefs)))
+
+    return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
+
+
+def load_questions_answers(politician_url, verbose=False, n_threads=1) -> List[QuestionAnswerResult]:
+    urls = get_questions_answers_urls(politician_url, verbose=verbose)
+    if n_threads == 1:
+        if verbose:
+            urls = tqdm.tqdm(urls, desc='Loading questions answers', ascii=True)
+        return [download_question_answer(url) for url in urls]
+    elif n_threads > 1:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n_threads) as executor:
+            futures = [executor.submit(download_question_answer, url=url) for url in urls]
+            if verbose:
+                futures = tqdm.tqdm(futures, desc='Loading questions answers', ascii=True)
+            return [f.result() for f in futures]
+    else:
+        raise ValueError('n_threads must be 1 or greater, got {}'.format(n_threads))
