@@ -10,62 +10,33 @@ import requests
 import tqdm
 
 
-def get_from_key_list(key_list, key, default=None):
-    for k, value in key_list:
-        if k == key:
-            return value
-    return default
+def normalize_base_url(base_url):
+    profile_index = base_url.find('/profile/')
+    base_url = base_url[profile_index:]
+
+    base_url = '/'.join(base_url.split('/')[:3])
+
+    if not base_url.endswith('/'):
+        base_url += '/'
+    return base_url + 'fragen-antworten/'
 
 
 class QuestionsAnswersParser(html.parser.HTMLParser):
-    def __init__(self):
+    def __init__(self, base_url):
         super().__init__()
-        self.in_div = False
+        self.base_url = normalize_base_url(base_url)
         self.hrefs = set()
 
     def handle_starttag(self, tag, attrs):
-        if tag == 'div':
-            if 'tile__question__teaser' in get_from_key_list(attrs, 'class', ''):
-                self.in_div = True
-        elif tag == 'a':
-            if self.in_div:
-                href = get_from_key_list(attrs, 'href', None)
-                if href:
-                    if not href.split('/')[-1].isnumeric():
-                        self.hrefs.add(href)
+        if tag == 'a':
+            attrs = dict(attrs)
+            if 'href' in attrs:
+                href = attrs['href']
+                if href.startswith(self.base_url):
+                    self.hrefs.add(href)
 
     def handle_endtag(self, tag):
-        if tag == 'div':
-            self.in_div = False
-
-
-class QuestionAnswerParser(html.parser.HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.in_title = False
-        self.title = None
-
-        self.in_question = False
-        self.question = None
-
-    def handle_starttag(self, tag, attrs):
-        if tag == 'h1' and get_from_key_list(attrs, 'class', '') == 'tile__question__teaser':
-            self.in_title = True
-        elif tag == 'div' and get_from_key_list(attrs, 'class', '') == 'field field--text_long field--text':
-            self.in_question = True
-
-    def handle_endtag(self, tag):
-        if tag == 'h1':
-            self.in_title = False
-        if tag == 'div':
-            self.in_question = False
-
-    def handle_data(self, data):
-        if self.in_title:
-            self.title = ' '.join(t for t in data.strip().replace('\n', ' ').split(' ') if t)
-        if self.in_question:
-            if self.question is None:
-                self.question = ' '.join(t for t in data.strip().replace('\n', ' ').split(' ') if t)
+        pass
 
 
 class QuestionAnswerResult:
@@ -218,8 +189,15 @@ def get_questions_answers_url(url, page=None):
 
 
 def get_questions_answers_urls(url, verbose=False):
+    """
+    Load all question urls from a person.
+
+    :param url: A base url like https://www.abgeordnetenwatch.de/profile/firstname-lastname/
+    :param verbose: Whether to print verbose information
+    :return: A list of urls, each pointing to a page with one question and optional answer
+    """
     page = 0
-    parser = QuestionsAnswersParser()
+    parser = QuestionsAnswersParser(url)
     while True:
         url = get_questions_answers_url(url, page)
         page += 1
@@ -256,3 +234,14 @@ def load_questions_answers(politician_url, verbose=False, n_threads=1) -> List[Q
             return [f.result() for f in futures]
     else:
         raise ValueError('n_threads must be 1 or greater, got {}'.format(n_threads))
+
+
+def save_page(politician):
+    url = politician.get_url()
+    url = get_questions_answers_url(url, 0)
+
+    r = requests.get(url)
+    print(r.status_code)
+    name = '{}_{}'.format(politician.first_name, politician.last_name)
+    with open(f'pages/{name}.html', 'w') as f:
+        f.write(r.text)
