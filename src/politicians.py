@@ -1,11 +1,8 @@
-import concurrent.futures
 from typing import List
 
-import tqdm
 import requests
 from party import Party
-from utils import QuestionsAnswersParser, download_question_answer, QuestionAnswerResult, get_questions_answers_url, \
-    get_questions_answers_urls, load_questions_answers
+from utils import QuestionAnswerResult, load_questions_answers
 
 
 class Politician:

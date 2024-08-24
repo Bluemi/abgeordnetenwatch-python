@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 import sys
-import datetime
 
 import politicians
 import utils
@@ -10,7 +9,8 @@ import utils
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Download questions/answers from politicians from abgeordnetenwatch.de and export to csv or json.'
+        description='Download questions/answers from politicians from abgeordnetenwatch.de and export to csv, txt or '
+                    'json.'
     )
     parser.add_argument(
         '--url', type=str,
