@@ -181,6 +181,32 @@ def questions_answers_to_csv(filename, questions_answers: List[QuestionAnswerRes
             writer.writerow(qa.to_json())
 
 
+def sort_questions_answers(questions_answers: List[QuestionAnswerResult], sort_by: str):
+    """
+    Sort the given QuestionAnswerResults.
+
+    :param questions_answers: The questions and answers to sort
+    :param sort_by: The value to sort by. Either 'answer' or 'question'. Sorts by the date of the answer or the
+                    question.
+    :return: The same list, sorted by answer or question date.
+    """
+    if sort_by == 'answer':
+        def _key_function(qa):
+            if qa.answer_date:
+                return qa.answer_date
+            if qa.question_date:
+                return qa.question_date
+            return datetime.date.today()
+    elif sort_by == 'question':
+        def _key_function(qa):
+            if qa.question_date:
+                return qa.question_date
+            return datetime.date.today()
+    else:
+        raise ValueError('Invalid sort option: {}'.format(sort_by))
+    return list(sorted(questions_answers, key=_key_function))
+
+
 def get_questions_answers_url(url, page=None):
     if page is None:
         return '{}/{}'.format(url, 'fragen-antworten')

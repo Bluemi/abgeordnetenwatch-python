@@ -95,25 +95,7 @@ def main():
         questions_answers = politician.load_questions_answers(verbose=not args.quiet, n_threads=args.n_threads)
 
     # sort
-    if args.sort_by.lower().startswith('answer'):
-        def _key_function(qa):
-            if qa.answer_date:
-                return qa.answer_date
-            if qa.question_date:
-                return qa.question_date
-            return datetime.date.today()
-        if not args.quiet:
-            print('sorting by answer')
-    elif args.sort_by.lower().startswith('question'):
-        def _key_function(qa):
-            if qa.question_date:
-                return qa.question_date
-            return datetime.date.today()
-        if not args.quiet:
-            print('sorting by question')
-    else:
-        raise ValueError('Invalid sort option: {}'.format(args.sort_by))
-    questions_answers = list(sorted(questions_answers, key=_key_function))
+    questions_answers = utils.sort_questions_answers(questions_answers, args.sort_by)
 
     os.makedirs('data', exist_ok=True)
     ending = args.format
