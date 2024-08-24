@@ -7,8 +7,8 @@ from politicians import Politician, get_politician
 
 
 class CandidacyMandate:
-    def __init__(self, id, label, politician_id, parliament_period_id):
-        self.id = id
+    def __init__(self, iden, label, politician_id, parliament_period_id):
+        self.iden = iden
         self.label = label
         self.politician_id = politician_id
         self.parliament_period_id = parliament_period_id
@@ -16,7 +16,7 @@ class CandidacyMandate:
     @staticmethod
     def from_json(data):
         return CandidacyMandate(
-            id=data['id'],
+            iden=data['id'],
             label=data['label'],
             politician_id=data['politician']['id'],
             parliament_period_id=data['parliament_period']['id'],
@@ -24,36 +24,36 @@ class CandidacyMandate:
 
     def to_json(self):
         return dict(
-            id=self.id,
+            id=self.iden,
             label=self.label,
             politician_id=self.politician_id,
             parliament_period_id=self.parliament_period_id,
         )
 
     def get_politician(self) -> Politician:
-        return get_politician(id=self.politician_id)
+        return get_politician(iden=self.politician_id)
 
     def get_parliament_period(self) -> ParliamentPeriod:
-        return get_parliament_period(id=self.parliament_period_id)
+        return get_parliament_period(iden=self.parliament_period_id)
 
     def __repr__(self):
         return 'CandidacyMandate(id={}, label={} politician_id={}, parliament_period_id={})' \
-            .format(self.id, self.label, self.politician_id, self.parliament_period_id)
+            .format(self.iden, self.label, self.politician_id, self.parliament_period_id)
 
 
-def get_candidacy_mandates(id=None, politician_id=None, parliament_period_id=None, limit=100) -> List[CandidacyMandate]:
+def get_candidacy_mandates(iden=None, politician_id=None, parliament_period_id=None, limit=100) -> List[CandidacyMandate]:
     """
     Calls the abgeordnetenwatch API to retrieve all parliaments matching the given parameters.
 
-    :param id: Id to use for filtering
+    :param iden: Id to use for filtering
     :param politician_id: id for the politician
     :param parliament_period_id: id for the parliament period
     :param limit: The maximal number of items to return
     :return: A list of CandidacyMandates. Can be empty.
     """
     params = {}
-    if id is not None:
-        params['id'] = id
+    if iden is not None:
+        params['id'] = iden
     if politician_id is not None:
         params['politician'] = politician_id
     if parliament_period_id is not None:
