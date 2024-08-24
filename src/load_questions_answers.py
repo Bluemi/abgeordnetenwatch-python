@@ -104,14 +104,7 @@ def main():
         filename = f'data/{u}.{ending}'
     else:
         filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
-    if args.format == 'csv':
-        utils.questions_answers_to_csv(filename, questions_answers)
-    elif args.format == 'json':
-        with open(filename, 'w') as f:
-            data = utils.questions_answers_to_json(questions_answers)
-            json.dump(data, f, indent=2)
-    elif args.format == 'txt':
-        utils.questions_answers_to_txt(filename, questions_answers)
+    utils.save_answers_to_format(questions_answers, filename, args.format)
 
     if not args.quiet:
         print('Saved result in', filename)

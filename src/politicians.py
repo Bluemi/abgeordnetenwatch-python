@@ -60,6 +60,12 @@ class Politician:
         return 'Politician(id={}, first_name={} last_name={}, party={}, residence={})' \
                .format(self.id, self.first_name, self.last_name, self.party, self.residence)
 
+    def get_full_name(self):
+        """
+        :return: the full name of the politician ("firstname lastname").
+        """
+        return '{} {}'.format(self.first_name, self.last_name)
+
 
 def get_politicians(id=None, first_name=None, last_name=None, party=None, residence=None) -> List[Politician]:
     """

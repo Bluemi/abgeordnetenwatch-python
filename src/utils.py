@@ -2,6 +2,7 @@ import concurrent.futures
 import csv
 import datetime
 import html.parser
+import json
 from typing import List, Optional
 
 from bs4 import BeautifulSoup
@@ -179,6 +180,17 @@ def questions_answers_to_csv(filename, questions_answers: List[QuestionAnswerRes
 
         for qa in questions_answers:
             writer.writerow(qa.to_json())
+
+
+def save_answers_to_format(questions_answers, filename, fmt):
+    if fmt == 'csv':
+        questions_answers_to_csv(filename, questions_answers)
+    elif fmt == 'json':
+        with open(filename, 'w') as f:
+            data = questions_answers_to_json(questions_answers)
+            json.dump(data, f, indent=2)
+    elif fmt == 'txt':
+        questions_answers_to_txt(filename, questions_answers)
 
 
 def sort_questions_answers(questions_answers: List[QuestionAnswerResult], sort_by: str):
