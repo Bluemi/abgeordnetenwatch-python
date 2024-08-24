@@ -35,7 +35,7 @@ def main():
     parliaments = get_parliaments(label=args.parliament)
     print(parliaments)
 
-    politicians = parliaments[0].get_politicians()
+    politicians = parliaments[0].get_politician_ids()
     print(politicians)
 
 

@@ -2,7 +2,8 @@ from typing import List
 
 import requests
 
-from politicians import Politician
+from candidacy_mandate import get_candidacy_mandates
+from parliament_period import get_parliament_periods
 
 
 class Parliament:
@@ -33,8 +34,19 @@ class Parliament:
     def get_url(self):
         return 'https://www.abgeordnetenwatch.de/{}'.format(self.label.lower())
 
-    def get_politicians(self) -> List[Politician]:
-        raise NotImplementedError()
+    def get_politician_ids(self, verbose=True) -> List[int]:
+        politician_ids = []
+
+        parliament_periods = get_parliament_periods(parliament_id=self.id, limit=1000)
+        for index, pp in enumerate(parliament_periods):
+            if verbose:
+                print('loading parliament period [{}/{}]: {} '.format(index+1, len(parliament_periods), pp.label),
+                      end='', flush=True)
+            candidacy_mandates = get_candidacy_mandates(parliament_period_id=pp.id, limit=1000)
+            if verbose:
+                print('(found {} politicians)'.format(len(candidacy_mandates)), flush=True)
+            politician_ids.extend(cm.politician_id for cm in candidacy_mandates)
+        return politician_ids
 
     def __repr__(self):
         return 'Parliament(id={}, label={})'.format(self.id, self.label)

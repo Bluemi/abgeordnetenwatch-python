@@ -86,3 +86,9 @@ def get_politicians(id=None, first_name=None, last_name=None, party=None, reside
     r = requests.get('https://www.abgeordnetenwatch.de/api/v2/politicians', params=params)
     if r.ok:
         return [Politician.from_json(pol_data) for pol_data in r.json()['data']]
+
+
+def get_politician(id=None, first_name=None, last_name=None, party=None, residence=None) -> Politician:
+    politicians = get_politicians(id, first_name, last_name, party, residence)
+    assert len(politicians) == 1, 'Expected 1 politician, but found {}'.format(len(politicians))
+    return politicians[0]
