@@ -73,7 +73,7 @@ def main():
         if args.lastname is not None:
             filter_args['last_name'] = args.lastname
         if args.id is not None:
-            filter_args['id'] = args.id
+            filter_args['iden'] = args.id
 
         if not filter_args:
             parser.print_usage()
