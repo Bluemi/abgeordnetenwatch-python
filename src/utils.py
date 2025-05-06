@@ -1,10 +1,11 @@
-import concurrent.futures
 import csv
 import datetime
 import html.parser
 import json
+import asyncio
 from typing import List, Optional
 
+import aiohttp
 from bs4 import BeautifulSoup
 
 import requests
@@ -80,17 +81,19 @@ class QuestionAnswerResult:
                 )
 
 
-def download_question_answer(url) -> QuestionAnswerResult:
+async def download_question_answer(url: str, session: aiohttp.ClientSession, verbose: bool) -> QuestionAnswerResult:
     result = QuestionAnswerResult(url)
-    r = requests.get(url)
-    if r.ok:
-        parse_question_answer(r.text, result)
-    else:
-        result.errors.append(f'Page download failed with code {r.status_code}')
+    async with session.get(url) as r:
+        if verbose:
+            print(f'Loading {url}')
+        if r.ok:
+            parse_question_answer(await r.text(), result)
+        else:
+            result.errors.append(f'Page download failed with code {r.status}')
     return result
 
 
-def normalize_text(text):
+def normalize_text(text: str):
     return ' '.join(filter(bool, text.strip().replace('\n', ' ').split(' ')))
 
 
@@ -226,7 +229,7 @@ def get_questions_answers_url(url, page=None):
         return '{}/{}?page={}'.format(url, 'fragen-antworten', page)
 
 
-def get_questions_answers_urls(url, verbose=False):
+def get_questions_answers_urls(url: str, verbose: bool = False):
     """
     Load all question urls from a person.
 
@@ -254,20 +257,58 @@ def get_questions_answers_urls(url, verbose=False):
     return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
 
 
-def load_questions_answers(politician_url, verbose=False, n_threads=1) -> List[QuestionAnswerResult]:
-    urls = get_questions_answers_urls(politician_url, verbose=verbose)
-    if n_threads == 1:
-        if verbose:
-            urls = tqdm.tqdm(urls, desc='Loading questions answers', ascii=True)
-        return [download_question_answer(url) for url in urls]
-    elif n_threads > 1:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=n_threads) as executor:
-            futures = [executor.submit(download_question_answer, url=url) for url in urls]
-            if verbose:
-                futures = tqdm.tqdm(futures, desc='Loading questions answers', ascii=True)
-            return [f.result() for f in futures]
-    else:
-        raise ValueError('n_threads must be 1 or greater, got {}'.format(n_threads))
+async def async_get_questions_answers_urls(
+        url: str,
+        session: aiohttp.ClientSession,
+        verbose: bool = False,
+        threads: int = 5,
+) -> List[str]:
+    """
+    Load all question URLs from a person, fetching pages concurrently.
+
+    :param url:      Base URL
+    :param session:  aiohttp.ClientSession
+    :param verbose:  Whether to print verbose info
+    :param threads:  Max concurrent fetches
+    :return: List of full URLs
+    """
+    parser = QuestionsAnswersParser(url)
+    sem = asyncio.Semaphore(threads)
+
+    async def fetch_page(page: int):
+        page_url = get_questions_answers_url(url, page)
+        async with sem, session.get(page_url) as resp:
+            if resp.status != 200:
+                return None
+            return await resp.text()
+
+    pages = 0
+    while True:
+        tasks = [asyncio.create_task(fetch_page(p)) for p in range(pages, pages + threads)]
+        results = await asyncio.gather(*tasks)
+        old_count = len(parser.hrefs)
+        for text in filter(None, results):
+            parser.feed(text)
+        if len(parser.hrefs) == old_count:
+            break
+        pages += threads
+
+    if verbose:
+        print(f"{len(parser.hrefs)} questions answers found")
+
+    return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
+
+
+async def load_questions_answers(
+        politician_url: str, verbose: bool = False, threads: int = 1
+) -> List[QuestionAnswerResult]:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=threads)) as session:
+        urls = await async_get_questions_answers_urls(politician_url, session, verbose=verbose, threads=threads)
+
+        tasks = [download_question_answer(url, session, verbose) for url in urls]
+        results = await asyncio.gather(*tasks)
+
+    return results
 
 
 def save_page(politician):

@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import json
 from pathlib import Path
 
@@ -21,7 +22,7 @@ def parse_args():
         '--sort-by', type=str, default='question', choices=['answer', 'question'],
         help='Sort by date of question or answer. Can be one of the following: answer question. Defaults to answer.'
     )
-    parser.add_argument('--n-threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
+    parser.add_argument('--threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
 
     parser.add_argument(
         '--format', type=str, default='csv', choices=['csv', 'json', 'txt'],
@@ -33,7 +34,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+async def main():
     args = parse_args()
 
     verbose = not args.quiet
@@ -61,7 +62,9 @@ def main():
                 politician = get_politician(iden=politician_id)
                 if verbose:
                     print('loading questions [{}/{}]: {}'.format(index + 1, len(meta_data), politician.get_full_name()))
-                questions_answers = politician.load_questions_answers(verbose=not args.quiet, n_threads=args.n_threads)
+                questions_answers = await politician.load_questions_answers(
+                    verbose=not args.quiet, threads=args.threads
+                )
                 if len(questions_answers):
                     questions_answers = sort_questions_answers(questions_answers, args.sort_by)
                     ending = args.format
@@ -82,4 +85,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

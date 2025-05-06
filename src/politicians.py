@@ -49,9 +49,9 @@ class Politician:
         last_name = self.last_name.lower().replace(' ', '-')
         return 'https://www.abgeordnetenwatch.de/profile/{}-{}'.format(first_name, last_name)
 
-    def load_questions_answers(self, verbose=False, n_threads=1) -> List[QuestionAnswerResult]:
+    async def load_questions_answers(self, verbose: bool = False, threads: int = 1) -> List[QuestionAnswerResult]:
         politician_url = self.get_url()
-        return load_questions_answers(politician_url, verbose=verbose, n_threads=n_threads)
+        return await load_questions_answers(politician_url, verbose=verbose, threads=threads)
 
     def get_label(self):
         return '{} {}'.format(self.first_name, self.last_name)
