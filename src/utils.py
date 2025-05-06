@@ -9,7 +9,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 import requests
-import tqdm
+from tqdm import tqdm
 
 
 def normalize_base_url(base_url):
@@ -81,11 +81,9 @@ class QuestionAnswerResult:
                 )
 
 
-async def download_question_answer(url: str, session: aiohttp.ClientSession, verbose: bool) -> QuestionAnswerResult:
+async def download_question_answer(url: str, session: aiohttp.ClientSession) -> QuestionAnswerResult:
     result = QuestionAnswerResult(url)
     async with session.get(url) as r:
-        if verbose:
-            print(f'Loading {url}')
         if r.ok:
             parse_question_answer(await r.text(), result)
         else:
@@ -258,20 +256,8 @@ def get_questions_answers_urls(url: str, verbose: bool = False):
 
 
 async def async_get_questions_answers_urls(
-        url: str,
-        session: aiohttp.ClientSession,
-        verbose: bool = False,
-        threads: int = 5,
+        url: str, session: aiohttp.ClientSession, verbose: bool = False, threads: int = 5,
 ) -> List[str]:
-    """
-    Load all question URLs from a person, fetching pages concurrently.
-
-    :param url:      Base URL
-    :param session:  aiohttp.ClientSession
-    :param verbose:  Whether to print verbose info
-    :param threads:  Max concurrent fetches
-    :return: List of full URLs
-    """
     parser = QuestionsAnswersParser(url)
     sem = asyncio.Semaphore(threads)
 
@@ -283,20 +269,29 @@ async def async_get_questions_answers_urls(
             return await resp.text()
 
     pages = 0
+    pbar = None
+    if verbose:
+        pbar = tqdm(desc="collecting questions")
     while True:
         tasks = [asyncio.create_task(fetch_page(p)) for p in range(pages, pages + threads)]
-        results = await asyncio.gather(*tasks)
         old_count = len(parser.hrefs)
-        for text in filter(None, results):
-            parser.feed(text)
+        for coro in asyncio.as_completed(tasks):
+            text = await coro
+            if pbar is not None:
+                pbar.update(1)
+            if text:
+                parser.feed(text)
         if len(parser.hrefs) == old_count:
             break
         pages += threads
 
+    if pbar is not None:
+        pbar.close()
+
     if verbose:
         print(f"{len(parser.hrefs)} questions answers found")
 
-    return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
+    return [str('https://www.abgeordnetenwatch.de' + href) for href in parser.hrefs]
 
 
 async def load_questions_answers(
@@ -305,8 +300,10 @@ async def load_questions_answers(
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=threads)) as session:
         urls = await async_get_questions_answers_urls(politician_url, session, verbose=verbose, threads=threads)
 
-        tasks = [download_question_answer(url, session, verbose) for url in urls]
-        results = await asyncio.gather(*tasks)
+        tasks = [download_question_answer(url, session) for url in urls]
+        results = []
+        for coro in tqdm(asyncio.as_completed(tasks), total=len(tasks), desc='loading questions'):
+            results.append(await coro)
 
     return results
 
