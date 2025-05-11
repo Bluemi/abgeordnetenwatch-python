@@ -24,3 +24,14 @@ python3 src/load_questions_answers.py --help
 ```
 
 Das erzeugt eine Datei `data/079137_Angela_Merkel.csv` mit allen Fragen und Antworten der betreffenden Person.
+
+### Parlament laden
+Um alle Fragen und Antworten von allen Politikern aus einem Parlament zu holen, können Sie folgendes tun:
+
+```sh
+# Lade „bundestag“ mit 16 gleichzeitigen Anfragen
+python3 src/load_parliament_qa.py bundestag -t 16
+
+# für weitere Optionen
+python3 src/load_parliament_qa.py --help
+```
