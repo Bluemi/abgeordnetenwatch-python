@@ -38,8 +38,7 @@ def get_parliament_periods(iden=None, parliament_id=None, limit=100) -> List[Par
     params['range_end'] = str(limit)
     r = requests.get('https://www.abgeordnetenwatch.de/api/v2/parliament-periods', params=params)
     r.raise_for_status()
-    if r.ok:
-        return [ParliamentPeriod.from_json(par_per_data) for par_per_data in r.json()['data']]
+    return [ParliamentPeriod.from_json(par_per_data) for par_per_data in r.json()['data']]
 
 
 def get_parliament_period(iden=None, parliament_id=None, limit=100) -> ParliamentPeriod:

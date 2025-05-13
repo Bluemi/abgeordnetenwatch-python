@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 
-import politicians
+from models import politicians
 import utils
 from utils import print_questions_answers
 

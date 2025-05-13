@@ -19,10 +19,10 @@ You can download all questions and answers from a politician with the following 
 
 ```sh
 # -v for verbose output
-python3 src/load_questions_answers.py --firstname "Angela" --lastname "Merkel"
+python3 abgeordnetenwatch-python/load_questions_answers.py --firstname "Angela" --lastname "Merkel"
 
 # for more options
-python3 src/load_questions_answers.py --help
+python3 abgeordnetenwatch-python/load_questions_answers.py --help
 ```
 
 This will create a file `data/079137_Angela_Merkel.csv` with all questions and answers of the specified person.
@@ -31,8 +31,8 @@ This will create a file `data/079137_Angela_Merkel.csv` with all questions and a
 To fetch all questions and answers from all politicians from a parliament you can do the following:
 ```sh
 # load "bundestag" using 16 requests simulaneously
-python3 src/load_parliament_qa.py bundestag -t 16
+python3 abgeordnetenwatch-python/load_parliament_qa.py bundestag -t 16
 
 # for more options
-python3 src/load_parliament_qa.py --help
+python3 abgeordnetenwatch-python/load_parliament_qa.py --help
 ```

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "abgeordnetenwatch_python"
+version = "0.1.0"
+description = "Fetch questions and answers from german politicians via python classes."
+authors = [
+    { name="Bruno Schilling", email="bruno.schilling@protonmail.ch" }
+]
+license = { text = "GPL-3.0-only" }
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # "numpy>=1.21.0",
+	"beautifulsoup4>=4.12",
+	"requests>=2.31",
+	"tqdm>=4.66",
+	"aiohttp>=3.11",
+	"pydantic>=2.11"
+
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+load_parliament_qa = "abgeordnetenwatch_python.cli.load_parliament_qa:main"
+load_questions_answers = "abgeordnetenwatch_python.cli.load_questions_answers:main"
+
+[tool.setuptools.packages.find]
+where = ["."]

@@ -6,7 +6,7 @@ from pprint import pprint
 
 from bs4 import BeautifulSoup
 
-import politicians
+from models import politicians
 import utils
 
 

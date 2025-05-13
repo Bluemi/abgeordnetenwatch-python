@@ -1,8 +1,8 @@
 from typing import List
 
 import requests
-from party import Party
-from utils import QuestionAnswerResult, load_questions_answers
+from .party import Party
+from abgeordnetenwatch_python.utils import QuestionAnswerResult, load_questions_answers
 
 
 class Politician:

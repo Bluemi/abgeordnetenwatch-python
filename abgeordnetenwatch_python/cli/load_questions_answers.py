@@ -1,10 +1,9 @@
 import argparse
 import asyncio
-import json
 import os
 import sys
 
-import politicians
+from abgeordnetenwatch_python.models import politicians
 import utils
 
 
@@ -59,7 +58,7 @@ def choose_from_list(politician_list) -> politicians.Politician:
     return selected_politician
 
 
-async def main():
+async def async_main():
     parser, args = parse_args()
 
     politician = None
@@ -111,5 +110,9 @@ async def main():
         print('Saved result in', filename)
 
 
+def main():
+    asyncio.run(async_main())
+
+
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()

@@ -2,8 +2,8 @@ from typing import List
 
 import requests
 
-from candidacy_mandate import get_candidacy_mandates
-from parliament_period import get_parliament_periods
+from .candidacy_mandate import get_candidacy_mandates
+from .parliament_period import get_parliament_periods
 
 
 class Parliament:
@@ -66,8 +66,8 @@ def get_parliaments(iden=None, label=None) -> List[Parliament]:
     if label is not None:
         params['label'] = label
     r = requests.get('https://www.abgeordnetenwatch.de/api/v2/parliaments', params=params)
-    if r.ok:
-        return [Parliament.from_json(par_data) for par_data in r.json()['data']]
+    r.raise_for_status()
+    return [Parliament.from_json(par_data) for par_data in r.json()['data']]
 
 
 def get_parliament(iden=None, label=None) -> Parliament:

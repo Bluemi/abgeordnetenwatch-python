@@ -2,8 +2,8 @@ from typing import List
 
 import requests
 
-from parliament_period import ParliamentPeriod, get_parliament_period
-from politicians import Politician, get_politician
+from .parliament_period import ParliamentPeriod, get_parliament_period
+from .politicians import Politician, get_politician
 
 
 class CandidacyMandate:
@@ -41,7 +41,9 @@ class CandidacyMandate:
             .format(self.iden, self.label, self.politician_id, self.parliament_period_id)
 
 
-def get_candidacy_mandates(iden=None, politician_id=None, parliament_period_id=None, limit=100) -> List[CandidacyMandate]:
+def get_candidacy_mandates(
+        iden=None, politician_id=None, parliament_period_id=None, limit=100
+) -> List[CandidacyMandate]:
     """
     Calls the abgeordnetenwatch API to retrieve all parliaments matching the given parameters.
 
@@ -60,5 +62,5 @@ def get_candidacy_mandates(iden=None, politician_id=None, parliament_period_id=N
         params['parliament_period'] = parliament_period_id
     params['range_end'] = str(limit)
     r = requests.get('https://www.abgeordnetenwatch.de/api/v2/candidacies-mandates', params=params)
-    if r.ok:
-        return [CandidacyMandate.from_json(par_data) for par_data in r.json()['data']]
+    r.raise_for_status()
+    return [CandidacyMandate.from_json(par_data) for par_data in r.json()['data']]

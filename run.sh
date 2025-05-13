@@ -6,11 +6,11 @@ case "$1" in
 		;;
 	qa)
 		shift
-		python3 src/load_questions_answers.py "$@"
+		PYTHONPATH="$PWD/abgeordnetenwatch_python" python3 abgeordnetenwatch_python/cli/load_questions_answers.py "$@"
 		;;
 	p)
 		shift
-		python3 src/load_parliament_qa.py "$@"
+		PYTHONPATH="$PWD/abgeordnetenwatch_python" python3 abgeordnetenwatch_python/cli/load_parliament_qa.py "$@"
 		;;
 	t)
 		python3 src/test.py
