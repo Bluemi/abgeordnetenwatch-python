@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import json
 import os
 import sys
@@ -26,7 +27,7 @@ def parse_args():
         '--sort-by', type=str, default='question', choices=['answer', 'question'],
         help='Sort by date of question or answer. Can be one of the following: answer question. Defaults to answer.'
     )
-    parser.add_argument('--n-threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
+    parser.add_argument('--threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
 
     parser.add_argument(
         '--format', type=str, default='csv', choices=['csv', 'json', 'txt'],
@@ -58,14 +59,14 @@ def choose_from_list(politician_list) -> politicians.Politician:
     return selected_politician
 
 
-def main():
+async def main():
     parser, args = parse_args()
 
     politician = None
 
     url = args.url
     if url is not None:
-        questions_answers = utils.load_questions_answers(url, verbose=not args.quiet, n_threads=args.n_threads)
+        questions_answers = await utils.load_questions_answers(url, verbose=not args.quiet, threads=args.threads)
     else:
         filter_args = {}
         if args.firstname is not None:
@@ -92,7 +93,7 @@ def main():
         if not args.quiet:
             print(f'Downloading {politician}')
 
-        questions_answers = politician.load_questions_answers(verbose=not args.quiet, n_threads=args.n_threads)
+        questions_answers = await politician.load_questions_answers(verbose=not args.quiet, threads=args.threads)
 
     # sort
     questions_answers = utils.sort_questions_answers(questions_answers, args.sort_by)
@@ -111,4 +112,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
