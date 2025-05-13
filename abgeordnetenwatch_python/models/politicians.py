@@ -13,10 +13,10 @@ class Politician(BaseModel):
     party: Optional[Party] = None
     residence: Optional[str] = None
 
-    def get_api_url(self):
+    def get_api_url(self) -> str:
         return 'https://www.abgeordnetenwatch.de/api/v2/politicians/{}'.format(self.id)
 
-    def get_url(self):
+    def get_url(self) -> str:
         first_name = self.first_name.lower().replace(' ', '-')
         last_name = self.last_name.lower().replace(' ', '-')
         return 'https://www.abgeordnetenwatch.de/profile/{}-{}'.format(first_name, last_name)
@@ -25,21 +25,24 @@ class Politician(BaseModel):
         politician_url = self.get_url()
         return await load_questions_answers(politician_url, verbose=verbose, threads=threads)
 
-    def get_label(self):
+    def get_label(self) -> str:
         return '{} {}'.format(self.first_name, self.last_name)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Politician(id={}, first_name={} last_name={}, party={}, residence={})' \
                .format(self.id, self.first_name, self.last_name, self.party, self.residence)
 
-    def get_full_name(self):
+    def get_full_name(self) -> str:
         """
         :return: the full name of the politician ("firstname lastname").
         """
         return '{} {}'.format(self.first_name, self.last_name)
 
 
-def get_politicians(id=None, first_name=None, last_name=None, party=None, residence=None) -> List[Politician]:
+def get_politicians(
+        id: Optional[int] = None, first_name: Optional[str] = None, last_name: Optional[str] = None,
+        party: Optional[str] = None, residence: Optional[str] = None
+) -> List[Politician]:
     """
     Calls the abgeordnetenwatch API to retrieve all politicians matching the given parameters.
 
@@ -66,7 +69,10 @@ def get_politicians(id=None, first_name=None, last_name=None, party=None, reside
     return [Politician.model_validate(pol_data) for pol_data in r.json()['data']]
 
 
-def get_politician(id=None, first_name=None, last_name=None, party=None, residence=None) -> Politician:
+def get_politician(
+        id: Optional[int] = None, first_name: Optional[str] = None, last_name: Optional[str] = None,
+        party: Optional[str] = None, residence: Optional[str] = None
+) -> Politician:
     politicians = get_politicians(id, first_name, last_name, party, residence)
     assert len(politicians) == 1, 'Expected 1 politician, but found {}'.format(len(politicians))
     return politicians[0]

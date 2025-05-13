@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Dict, Any
 
 import requests
 from pydantic import BaseModel
@@ -19,13 +19,14 @@ class CandidacyMandate(BaseModel):
     def get_parliament_period(self) -> ParliamentPeriod:
         return get_parliament_period(id=self.parliament_period_id)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'CandidacyMandate(id={}, label={} politician_id={}, parliament_period_id={})' \
             .format(self.id, self.label, self.politician_id, self.parliament_period_id)
 
 
 def get_candidacy_mandates(
-        id=None, politician_id=None, parliament_period_id=None, limit=100
+        id: Optional[int] = None, politician_id: Optional[int] = None, parliament_period_id: Optional[int] = None,
+        limit: int = 100
 ) -> List[CandidacyMandate]:
     """
     Calls the abgeordnetenwatch API to retrieve all parliaments matching the given parameters.
@@ -51,7 +52,7 @@ def get_candidacy_mandates(
     return [CandidacyMandate.model_validate(par_data) for par_data in data]
 
 
-def _adapt_candidacy_mandate_data(d):
+def _adapt_candidacy_mandate_data(d: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [
         {
             'id': par_data['id'],

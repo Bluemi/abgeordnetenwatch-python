@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import os
 import sys
+from typing import List
 
 from abgeordnetenwatch_python.models import politicians
 import questions_answers as qa
@@ -38,7 +39,7 @@ def parse_args():
     return parser, parser.parse_args()
 
 
-def choose_from_list(politician_list) -> politicians.Politician:
+def choose_from_list(politician_list: List[politicians.Politician]) -> politicians.Politician:
     selected_politician = None
     print('found multiple politicians:')
     while selected_politician is None:

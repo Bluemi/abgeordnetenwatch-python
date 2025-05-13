@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import requests
 from pydantic import BaseModel
@@ -8,10 +8,10 @@ class Parliament(BaseModel):
     id: int
     label: str
 
-    def get_api_url(self):
+    def get_api_url(self) -> str:
         return 'https://www.abgeordnetenwatch.de/api/v2/parliaments/{}'.format(self.id)
 
-    def get_url(self):
+    def get_url(self) -> str:
         return 'https://www.abgeordnetenwatch.de/{}'.format(self.label.lower())
 
     def get_politician_ids(self, verbose=True) -> List[int]:
@@ -32,11 +32,11 @@ class Parliament(BaseModel):
             politician_ids.update(cm.politician_id for cm in candidacy_mandates)
         return sorted(politician_ids)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Parliament(id={}, label={})'.format(self.id, self.label)
 
 
-def get_parliaments(id=None, label=None) -> List[Parliament]:
+def get_parliaments(id: Optional[int] = None, label: Optional[str] = None) -> List[Parliament]:
     """
     Calls the abgeordnetenwatch API to retrieve all parliaments matching the given parameters.
 
@@ -54,7 +54,7 @@ def get_parliaments(id=None, label=None) -> List[Parliament]:
     return [Parliament.model_validate(par_data) for par_data in r.json()['data']]
 
 
-def get_parliament(id=None, label=None) -> Parliament:
+def get_parliament(id: Optional[int] = None, label: Optional[str] = None) -> Parliament:
     parliaments = get_parliaments(id, label)
     assert len(parliaments), 'Expected 1 parliament, but found {}'.format(len(parliaments))
     return parliaments[0]

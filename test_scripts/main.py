@@ -7,12 +7,7 @@ from pprint import pprint
 from bs4 import BeautifulSoup
 
 from models import politicians
-import questions_answers
-
-
-def save_page():
-    example_politician = politicians.get_politicians(first_name='Philipp', last_name='Bruck')[0]
-    utils.save_page(example_politician)
+import questions_answers as qa
 
 
 def load_page():

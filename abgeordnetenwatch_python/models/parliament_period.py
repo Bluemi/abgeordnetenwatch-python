@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import requests
 from pydantic import BaseModel
@@ -15,7 +15,9 @@ class ParliamentPeriod(BaseModel):
         return 'ParliamentPeriod(id={} label="{}" parliament={})'.format(self.id, self.label, self.parliament_id)
 
 
-def get_parliament_periods(id=None, parliament_id=None, limit=100) -> List[ParliamentPeriod]:
+def get_parliament_periods(
+        id: Optional[int] = None, parliament_id: Optional[int] = None, limit: int = 100
+) -> List[ParliamentPeriod]:
     """
     Calls the abgeordnetenwatch API to retrieve the ParliamentPeriod with the given id.
 
@@ -35,7 +37,9 @@ def get_parliament_periods(id=None, parliament_id=None, limit=100) -> List[Parli
     return [ParliamentPeriod.model_validate(par_per_data) for par_per_data in r.json()['data']]
 
 
-def get_parliament_period(id=None, parliament_id=None, limit=100) -> ParliamentPeriod:
+def get_parliament_period(
+        id: Optional[int] = None, parliament_id: Optional[int] = None, limit: int = 100
+) -> ParliamentPeriod:
     pps = get_parliament_periods(id, parliament_id, limit)
     assert len(pps) == 1, 'Expected 1 parliament period, but found {}'.format(len(pps))
     return pps[0]
