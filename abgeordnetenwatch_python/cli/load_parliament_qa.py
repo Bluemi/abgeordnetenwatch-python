@@ -59,7 +59,7 @@ async def async_main():
         politician_id, loaded = pol_meta['id'], pol_meta['loaded']
         if not loaded:
             try:
-                politician = get_politician(iden=politician_id)
+                politician = get_politician(id=politician_id)
                 if verbose:
                     print('loading questions [{}/{}]: {}'.format(index + 1, len(meta_data), politician.get_full_name()))
                 questions_answers = await politician.load_questions_answers(
@@ -68,7 +68,7 @@ async def async_main():
                 if len(questions_answers):
                     questions_answers = sort_questions_answers(questions_answers, args.sort_by)
                     ending = args.format
-                    filename = outdir / f'{politician.iden:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
+                    filename = outdir / f'{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
 
                     save_answers_to_format(questions_answers, filename, args.format)
                 else:

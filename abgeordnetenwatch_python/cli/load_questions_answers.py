@@ -43,14 +43,14 @@ def choose_from_list(politician_list) -> politicians.Politician:
     print('found multiple politicians:')
     while selected_politician is None:
         for p in politician_list:
-            print(f'  id={p.iden}  \t{p.first_name}, {p.last_name}')
+            print(f'  id={p.id}  \t{p.first_name}, {p.last_name}')
         politician_id = input('select one politician by id: ')
         try:
             politician_id = int(politician_id)
         except ValueError:
             print(f'\"{politician_id}\" is an invalid id! Try again.')
             continue
-        result = [p for p in politician_list if p.iden == politician_id]
+        result = [p for p in politician_list if p.id == politician_id]
         if len(result) != 1:
             print(f'No politician with id \"{politician_id}\" in the list.')
             continue
@@ -73,7 +73,7 @@ async def async_main():
         if args.lastname is not None:
             filter_args['last_name'] = args.lastname
         if args.id is not None:
-            filter_args['iden'] = args.id
+            filter_args['id'] = args.id
 
         if not filter_args:
             parser.print_usage()
@@ -103,7 +103,7 @@ async def async_main():
         u = [u for u in url.split('/') if u][-1]
         filename = f'data/{u}.{ending}'
     else:
-        filename = f'data/{politician.iden:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
+        filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
     utils.save_answers_to_format(questions_answers, filename, args.format)
 
     if not args.quiet:
