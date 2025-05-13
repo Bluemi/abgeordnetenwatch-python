@@ -3,16 +3,18 @@ import datetime
 import html.parser
 import json
 import asyncio
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, Tuple
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 import requests
+from pydantic import BaseModel
 from tqdm import tqdm
 
 
-def normalize_base_url(base_url):
+def normalize_base_url(base_url: str) -> str:
     profile_index = base_url.find('/profile/')
     base_url = base_url[profile_index:]
 
@@ -24,12 +26,12 @@ def normalize_base_url(base_url):
 
 
 class QuestionsAnswersParser(html.parser.HTMLParser):
-    def __init__(self, base_url):
+    def __init__(self, base_url: str):
         super().__init__()
         self.base_url = normalize_base_url(base_url)
         self.hrefs = set()
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]):
         if tag == 'a':
             attrs = dict(attrs)
             if 'href' in attrs:
@@ -37,44 +39,37 @@ class QuestionsAnswersParser(html.parser.HTMLParser):
                 if href.startswith(self.base_url):
                     self.hrefs.add(href)
 
-    def handle_endtag(self, tag):
+    def handle_endtag(self, tag: str):
         pass
 
 
-class QuestionAnswerResult:
-    def __init__(self, url: str):
-        self.url = url
-        self.question_date = None
-        self.question = None
-        self.question_addition = None
-        self.answer_date = None
-        self.answer = None
-        self.errors = []
+def _date_to_str(date: Optional[datetime.date]) -> str:
+    return date.strftime('%d.%m.%Y') if date is not None else 'XX.XX.XXXX'
 
-    def to_json(self):
-        return dict(
-            url=self.url,
-            question=self.question,
-            question_addition=self.question_addition,
-            answer=self.answer,
-            question_date=self.get_question_date(),
-            answer_date=self.get_answer_date(),
-        )
+
+class QuestionAnswerResult(BaseModel):
+    url: str
+    question_date: Optional[datetime.date] = None
+    question: Optional[str] = None
+    question_addition: Optional[str] = None
+    answer_date: Optional[datetime.date] = None
+    answer: Optional[str] = None
+    errors: List[str] = []
 
     def get_question_date(self) -> str:
-        return self.question_date.strftime('%d.%m.%Y') if self.question_date is not None else 'XX.XX.XXXX'
+        return _date_to_str(self.question_date)
 
     def get_answer_date(self) -> str:
-        return self.answer_date.strftime('%d.%m.%Y') if self.answer_date is not None else 'XX.XX.XXXX'
+        return _date_to_str(self.answer_date)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ('QuestionAnswerResult(url={}, question_date={}, question={}, question_addition={}, '
                 'answer_date={}, answer={})').format(
             self.url, self.get_question_date(), self.question, self.question_addition, self.get_answer_date(),
             self.answer
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ('url={}\n  question_date={}\n  question={}\n  question_addition={}\n  answer_date={}\n  answer={}'
                 .format(self.url, self.get_question_date(), self.question, self.question_addition,
                         self.get_answer_date(), self.answer)
@@ -82,7 +77,7 @@ class QuestionAnswerResult:
 
 
 async def download_question_answer(url: str, session: aiohttp.ClientSession) -> QuestionAnswerResult:
-    result = QuestionAnswerResult(url)
+    result = QuestionAnswerResult(url=url)
     async with session.get(url) as r:
         if r.ok:
             parse_question_answer(await r.text(), result)
@@ -91,7 +86,7 @@ async def download_question_answer(url: str, session: aiohttp.ClientSession) -> 
     return result
 
 
-def normalize_text(text: str):
+def normalize_text(text: str) -> str:
     return ' '.join(filter(bool, text.strip().replace('\n', ' ').split(' ')))
 
 
@@ -110,7 +105,7 @@ def date_from_text(text: str) -> Optional[datetime.date]:
         return None
 
 
-def parse_question_answer(content, qa_result: QuestionAnswerResult):
+def parse_question_answer(content: str, qa_result: QuestionAnswerResult):
     soup = BeautifulSoup(content, 'html.parser')
 
     main_article = soup.find_all('article', {'itemtype': 'https://schema.org/Question'})[0]
@@ -154,11 +149,17 @@ def print_questions_answers(questions_answers: List[QuestionAnswerResult]):
             print('<keine Antwort>')
 
 
-def questions_answers_to_json(questions_answers: List[QuestionAnswerResult]):
-    return [qa.to_json() for qa in questions_answers]
+def questions_answers_to_json(filename: Path, questions_answers: List[QuestionAnswerResult]):
+    def _default(obj):
+        if isinstance(obj, datetime.date):
+            return _date_to_str(obj)
+        raise TypeError(f'Type {type(obj)} not serializable')
+    data = [qa.model_dump() for qa in questions_answers]
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=2, default=_default)
 
 
-def questions_answers_to_txt(filename, questions_answers: List[QuestionAnswerResult]):
+def questions_answers_to_txt(filename: Path, questions_answers: List[QuestionAnswerResult]):
     with open(filename, 'w') as f:
         for qa in questions_answers:
             f.write('\n' + '-' * 50 + '\n\n')
@@ -172,7 +173,7 @@ def questions_answers_to_txt(filename, questions_answers: List[QuestionAnswerRes
                 f.write(qa.answer + '\n')
 
 
-def questions_answers_to_csv(filename, questions_answers: List[QuestionAnswerResult]):
+def questions_answers_to_csv(filename: Path, questions_answers: List[QuestionAnswerResult]):
     with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['url', 'question_date', 'question', 'question_addition', 'answer_date', 'answer']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -180,16 +181,16 @@ def questions_answers_to_csv(filename, questions_answers: List[QuestionAnswerRes
         writer.writeheader()
 
         for qa in questions_answers:
-            writer.writerow(qa.to_json())
+            dump_data = qa.model_dump()
+            dump_data = {key: dump_data[key] for key in fieldnames}
+            writer.writerow(dump_data)
 
 
-def save_answers_to_format(questions_answers, filename, fmt):
+def save_answers_to_format(questions_answers: List[QuestionAnswerResult], filename: Path, fmt: str):
     if fmt == 'csv':
         questions_answers_to_csv(filename, questions_answers)
     elif fmt == 'json':
-        with open(filename, 'w') as f:
-            data = questions_answers_to_json(questions_answers)
-            json.dump(data, f, indent=2)
+        questions_answers_to_json(filename, questions_answers)
     elif fmt == 'txt':
         questions_answers_to_txt(filename, questions_answers)
 
@@ -220,14 +221,14 @@ def sort_questions_answers(questions_answers: List[QuestionAnswerResult], sort_b
     return list(sorted(questions_answers, key=_key_function))
 
 
-def get_questions_answers_url(url, page=None):
+def get_questions_answers_url(url: str, page: Optional[int] = None):
     if page is None:
         return '{}/{}'.format(url, 'fragen-antworten')
     else:
         return '{}/{}?page={}'.format(url, 'fragen-antworten', page)
 
 
-def get_questions_answers_urls(url: str, verbose: bool = False):
+def get_questions_answers_urls(url: str, verbose: bool = False) -> List[str]:
     """
     Load all question urls from a person.
 
@@ -306,14 +307,3 @@ async def load_questions_answers(
             results.append(await coro)
 
     return results
-
-
-def save_page(politician):
-    url = politician.get_url()
-    url = get_questions_answers_url(url, 0)
-
-    r = requests.get(url)
-    print(r.status_code)
-    name = '{}_{}'.format(politician.first_name, politician.last_name)
-    with open(f'pages/{name}.html', 'w') as f:
-        f.write(r.text)
