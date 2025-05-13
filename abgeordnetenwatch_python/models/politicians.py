@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 import requests
 from .party import Party
-from abgeordnetenwatch_python.utils import QuestionAnswerResult, load_questions_answers
+from abgeordnetenwatch_python.questions_answers import QuestionAnswerResult, load_questions_answers
 
 
 class Politician(BaseModel):
@@ -43,12 +43,12 @@ def get_politicians(id=None, first_name=None, last_name=None, party=None, reside
     """
     Calls the abgeordnetenwatch API to retrieve all politicians matching the given parameters.
 
-    :param id: Id or list of ids to use for filtering
-    :param first_name: First name or list of first names to use for filtering
-    :param last_name: Last name or list of last names to use for filtering
-    :param party: Porty or list of parties to use for filtering
-    :param residence: Residence or list of residences to use for filtering
-    :return: A list of Politicians. Can be empty.
+    :param id: Identifier or list of identifiers to use for filtering.
+    :param first_name: First name or list of first names to use for filtering.
+    :param last_name: Last name or list of last names to use for filtering.
+    :param party: Porty or list of parties to use for filtering.
+    :param residence: Residence or list of residences to use for filtering.
+    :return: A (possibly empty) list of Politicians.
     """
     params = {}
     if id is not None:

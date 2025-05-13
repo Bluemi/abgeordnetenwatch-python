@@ -2,8 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 
 from models import politicians
-import utils
-from utils import print_questions_answers
+import questions_answers
+from questions_answers import print_questions_answers
 
 
 def main():

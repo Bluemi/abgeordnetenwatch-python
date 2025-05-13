@@ -30,11 +30,11 @@ def get_candidacy_mandates(
     """
     Calls the abgeordnetenwatch API to retrieve all parliaments matching the given parameters.
 
-    :param id: Id to use for filtering
+    :param id: Identifier to use for filtering
     :param politician_id: id for the politician
     :param parliament_period_id: id for the parliament period
     :param limit: The maximal number of items to return
-    :return: A list of CandidacyMandates. Can be empty.
+    :return: A (possibly empty) list of CandidacyMandates.
     """
     params = {}
     if id is not None:

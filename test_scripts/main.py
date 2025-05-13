@@ -7,7 +7,7 @@ from pprint import pprint
 from bs4 import BeautifulSoup
 
 from models import politicians
-import utils
+import questions_answers
 
 
 def save_page():

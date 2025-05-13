@@ -40,9 +40,9 @@ def get_parliaments(id=None, label=None) -> List[Parliament]:
     """
     Calls the abgeordnetenwatch API to retrieve all parliaments matching the given parameters.
 
-    :param id: Id to use for filtering
+    :param id: Identifier to use for filtering
     :param label: label to use for filtering
-    :return: A list of Parliaments. Can be empty.
+    :return: A (possibly empty) list of Parliaments.
     """
     params = {}
     if id is not None:

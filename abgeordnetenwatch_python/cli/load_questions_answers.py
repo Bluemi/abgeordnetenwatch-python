@@ -4,7 +4,7 @@ import os
 import sys
 
 from abgeordnetenwatch_python.models import politicians
-import utils
+import questions_answers as qa
 
 
 def parse_args():
@@ -65,7 +65,7 @@ async def async_main():
 
     url = args.url
     if url is not None:
-        questions_answers = await utils.load_questions_answers(url, verbose=not args.quiet, threads=args.threads)
+        questions_answers = await qa.load_questions_answers(url, verbose=not args.quiet, threads=args.threads)
     else:
         filter_args = {}
         if args.firstname is not None:
@@ -95,7 +95,7 @@ async def async_main():
         questions_answers = await politician.load_questions_answers(verbose=not args.quiet, threads=args.threads)
 
     # sort
-    questions_answers = utils.sort_questions_answers(questions_answers, args.sort_by)
+    questions_answers = qa.sort_questions_answers(questions_answers, args.sort_by)
 
     os.makedirs('data', exist_ok=True)
     ending = args.format
@@ -104,7 +104,7 @@ async def async_main():
         filename = f'data/{u}.{ending}'
     else:
         filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
-    utils.save_answers_to_format(questions_answers, filename, args.format)
+    qa.save_answers_to_format(questions_answers, filename, args.format)
 
     if not args.quiet:
         print('Saved result in', filename)

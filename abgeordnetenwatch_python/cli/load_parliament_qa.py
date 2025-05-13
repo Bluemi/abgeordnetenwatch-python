@@ -5,7 +5,7 @@ from pathlib import Path
 
 from models.parliament import get_parliament
 from models.politicians import get_politician
-from utils import sort_questions_answers, save_answers_to_format
+from questions_answers import sort_questions_answers, save_answers_to_format
 
 
 def parse_args():
