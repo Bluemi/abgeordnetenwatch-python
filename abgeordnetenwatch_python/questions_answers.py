@@ -5,7 +5,7 @@ import json
 import asyncio
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple, Dict, Any, Iterable
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -338,17 +338,21 @@ async def async_get_questions_answers_urls(
     pbar = None
     if verbose:
         pbar = tqdm(desc="collecting questions")
-    while True:
+    running = True
+    while running:
         tasks = [asyncio.create_task(fetch_page(p)) for p in range(pages, pages + threads)]
-        old_count = len(parser.hrefs)
         for coro in asyncio.as_completed(tasks):
             text = await coro
             if pbar is not None:
                 pbar.update(1)
+            old_count = len(parser.hrefs)
             if text:
                 parser.feed(text)
-        if len(parser.hrefs) == old_count:
-            break
+
+            # if no new urls here, stop searching for more
+            if len(parser.hrefs) == old_count:
+                running = False
+                break
         pages += threads
 
     if pbar is not None:
@@ -360,15 +364,36 @@ async def async_get_questions_answers_urls(
     return [str('https://www.abgeordnetenwatch.de' + href) for href in parser.hrefs]
 
 
+def get_batches(frames: List, batch_size: int) -> Iterable[List]:
+    """
+    Cuts the given list in chunks and yields them one by one.
+
+    :param frames: The list to cut
+    :param batch_size: The size of each batch
+    """
+    index = 0
+    while True:
+        chunk = frames[index:index+batch_size]
+        yield chunk
+        index += batch_size
+        if index >= len(frames):
+            break
+
+
 async def load_questions_answers(
         politician_url: str, verbose: bool = False, threads: int = 1
 ) -> List[QuestionAnswerResult]:
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=threads)) as session:
         urls = await async_get_questions_answers_urls(politician_url, session, verbose=verbose, threads=threads)
 
-        tasks = [download_question_answer(url, session) for url in urls]
+        progress = None
+        if verbose:
+            progress = tqdm(total=len(urls), desc="loading questions")
         results = []
-        for coro in tqdm(asyncio.as_completed(tasks), total=len(tasks), desc='loading questions'):
-            results.append(await coro)
-
+        for url_batch in get_batches(urls, threads):
+            tasks = [download_question_answer(url, session) for url in url_batch]
+            for coro in asyncio.as_completed(tasks):
+                results.append(await coro)
+                if progress is not None:
+                    progress.update(1)
     return results

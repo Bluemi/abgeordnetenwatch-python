@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import os
 import sys
+from pathlib import Path
 from typing import List
 
 from abgeordnetenwatch_python.models import politicians
@@ -105,7 +106,7 @@ async def async_main():
         filename = f'data/{u}.{ending}'
     else:
         filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
-    qa.save_answers_to_format(questions_answers, filename, args.format)
+    qa.save_answers_to_format(questions_answers, Path(filename), args.format)
 
     if not args.quiet:
         print('Saved result in', filename)
