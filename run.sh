@@ -2,7 +2,8 @@
 
 case "$1" in
 	r)
-		python3 src/main.py
+		shift
+		PYTHONPATH="$PWD/abgeordnetenwatch_python" python3 "$@"
 		;;
 	qa)
 		shift
@@ -12,10 +13,7 @@ case "$1" in
 		shift
 		PYTHONPATH="$PWD/abgeordnetenwatch_python" python3 abgeordnetenwatch_python/cli/load_parliament_qa.py "$@"
 		;;
-	t)
-		python3 src/test.py
-		;;
 	*)
-		echo "choose (r)un or (t)est"
+		echo "invalid option"
 		;;
 esac

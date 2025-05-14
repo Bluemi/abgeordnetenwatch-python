@@ -3,8 +3,9 @@ import datetime
 import html.parser
 import json
 import asyncio
+import re
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -48,13 +49,20 @@ def _date_to_str(date: Optional[datetime.date]) -> str:
 
 
 class QuestionAnswerResult(BaseModel):
-    url: str
+    url: Optional[str]
     question_date: Optional[datetime.date] = None
     question: Optional[str] = None
     question_addition: Optional[str] = None
     answer_date: Optional[datetime.date] = None
     answer: Optional[str] = None
     errors: List[str] = []
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'QuestionAnswerResult':
+        new_data = data.copy()
+        new_data['question_date'] = _str_to_date(data['question_date']) if data['question_date'] else None
+        new_data['answer_date'] = _str_to_date(data['answer_date']) if data['answer_date'] else None
+        return QuestionAnswerResult.model_validate(new_data)
 
     def get_question_date(self) -> str:
         return _date_to_str(self.question_date)
@@ -193,6 +201,63 @@ def save_answers_to_format(questions_answers: List[QuestionAnswerResult], filena
         questions_answers_to_json(filename, questions_answers)
     elif fmt == 'txt':
         questions_answers_to_txt(filename, questions_answers)
+
+
+def parse_questions_answers(input_file: Path, input_format: Optional[str] = None) -> List[QuestionAnswerResult]:
+    if input_format is None:
+        input_format = input_file.suffix[1:]
+
+    if input_format == 'txt':
+        return parse_txt_file(input_file)
+    elif input_format == 'json':
+        with open(input_file, 'r') as f:
+            data = json.load(f)
+            return [QuestionAnswerResult.from_dict(d) for d in data]
+    elif input_format == 'csv':
+        results = []
+        with open(input_file, 'r', newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                results.append(QuestionAnswerResult.from_dict(row))
+        return results
+    else:
+        raise ValueError('Unsupported file format: {}'.format(input_format))
+
+
+def _str_to_date(date_text: str) -> datetime.date:
+    return datetime.datetime.strptime(date_text, "%d.%m.%Y")
+
+
+def parse_txt_file(input_file: Path) -> List[QuestionAnswerResult]:
+    with open(input_file, 'r', encoding='utf-8') as f:
+        text = f.read()
+
+    entries = re.split(r'-{10,}', text.strip())
+    result = []
+
+    for entry in entries:
+        if not entry.strip():
+            continue
+
+        question_date_match = re.search(r'Frage vom (\d{2}\.\d{2}\.\d{4}):', entry)
+        question_match = re.search(r'Frage an .*', entry)
+        addition_match = re.search(r'Erläuterungen:\s*(.*?)(Antwort vom|\Z)', entry, re.S)
+        answer_date_match = re.search(r'Antwort vom (\d{2}\.\d{2}\.\d{4}):', entry)
+        answer_match = re.search(r'Antwort vom \d{2}\.\d{2}\.\d{4}:\s*(.*)', entry, re.S)
+
+        qa_result = QuestionAnswerResult.model_validate({
+            "url": None,
+            "question_date": _str_to_date(question_date_match.group(1)) if question_date_match else None,
+            "question": question_match.group(0).strip() if question_match else None,
+            "question_addition": addition_match.group(1).strip().replace('\n', ' ') if addition_match else None,
+            "answer_date": _str_to_date(answer_date_match.group(1)) if answer_date_match else None,
+            "answer": answer_match.group(1).strip().replace('\n', ' ') if answer_match else None,
+            "errors": []
+        })
+
+        result.append(qa_result)
+
+    return result
 
 
 def sort_questions_answers(questions_answers: List[QuestionAnswerResult], sort_by: str):
