@@ -3,6 +3,7 @@ import asyncio
 import json
 from pathlib import Path
 
+from cache import CacheSettings
 from models.parliament import get_parliament
 from models.politicians import get_politician
 from questions_answers import sort_questions_answers, save_answers_to_format
@@ -23,6 +24,11 @@ def parse_args():
         help='Sort by date of question or answer. Can be one of the following: answer question. Defaults to answer.'
     )
     parser.add_argument('--threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
+    parser.add_argument(
+        '--cache-level', '-c', type=int, default=1,
+        help='Cache level to use for requests.\n0: no cache.\n1: skip loaded questions, were the answer is cached.\n'
+             '2: skip loaded questions.\n3: skip politicians that were loaded before.\nDefaults to 1.'
+    )
 
     parser.add_argument('--outdir', '-o', type=Path, default=Path('data'), help='The directory to save the file to.')
     parser.add_argument('--quiet', '-q', action='store_true', help='Do not show progress.')
@@ -38,6 +44,8 @@ async def async_main():
     outdir: Path = args.outdir / args.parliament.lower()
     outdir.mkdir(exist_ok=True, parents=True)
     meta_path = outdir / 'meta.json'
+
+    cache_settings = CacheSettings.default(level=args.cache_level)
 
     if meta_path.is_file():
         with open(meta_path, 'r') as f:
@@ -59,7 +67,7 @@ async def async_main():
                 if verbose:
                     print('loading questions [{}/{}]: {}'.format(index + 1, len(meta_data), politician.get_full_name()))
                 questions_answers = await politician.load_questions_answers(
-                    verbose=not args.quiet, threads=args.threads
+                    verbose=not args.quiet, threads=args.threads, cache_settings=cache_settings,
                 )
                 if len(questions_answers):
                     questions_answers = sort_questions_answers(questions_answers, args.sort_by)
