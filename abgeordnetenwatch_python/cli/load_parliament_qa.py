@@ -24,10 +24,6 @@ def parse_args():
     )
     parser.add_argument('--threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
 
-    parser.add_argument(
-        '--format', type=str, default='csv', choices=['csv', 'json', 'txt'],
-        help='Output format to use. One of the following: csv, json, txt. Defaults to csv.'
-    )
     parser.add_argument('--outdir', '-o', type=Path, default=Path('data'), help='The directory to save the file to.')
     parser.add_argument('--quiet', '-q', action='store_true', help='Do not show progress.')
 
@@ -67,10 +63,9 @@ async def async_main():
                 )
                 if len(questions_answers):
                     questions_answers = sort_questions_answers(questions_answers, args.sort_by)
-                    ending = args.format
-                    filename = outdir / f'{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
+                    filename = outdir / f'{politician.id:0>6}_{politician.first_name}_{politician.last_name}.json'
 
-                    save_answers_to_format(questions_answers, filename, args.format)
+                    save_answers_to_format(questions_answers, filename, 'json')
                 else:
                     if verbose:
                         print('Skipping {}. No questions found.'.format(politician.get_full_name()))

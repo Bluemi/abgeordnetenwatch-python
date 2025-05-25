@@ -30,10 +30,6 @@ def parse_args():
     )
     parser.add_argument('--threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
 
-    parser.add_argument(
-        '--format', type=str, default='csv', choices=['csv', 'json', 'txt'],
-        help='Output format to use. One of the following: csv, json, txt. Defaults to csv.'
-    )
     parser.add_argument('--outdir', '-o', type=str, default='data', help='The directory to save the file to.')
     parser.add_argument('--quiet', '-q', action='store_true', help='Do not show progress.')
 
@@ -100,13 +96,12 @@ async def async_main():
     questions_answers = qa.sort_questions_answers(questions_answers, args.sort_by)
 
     os.makedirs('data', exist_ok=True)
-    ending = args.format
     if politician is None:
         u = [u for u in url.split('/') if u][-1]
-        filename = f'data/{u}.{ending}'
+        filename = f'data/{u}.json'
     else:
-        filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
-    qa.save_answers_to_format(questions_answers, Path(filename), args.format)
+        filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.json'
+    qa.save_answers_to_format(questions_answers, Path(filename), 'json')
 
     if not args.quiet:
         print('Saved result in', filename)
