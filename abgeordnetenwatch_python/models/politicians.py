@@ -7,7 +7,8 @@ import requests
 
 from abgeordnetenwatch_python.cache import CacheSettings
 from .party import Party
-from abgeordnetenwatch_python.questions_answers import QuestionAnswerResult, load_questions_answers
+from abgeordnetenwatch_python.questions_answers.models import QuestionAnswerResult
+from abgeordnetenwatch_python.questions_answers.load_qa import load_questions_answers
 
 
 class Politician(BaseModel):

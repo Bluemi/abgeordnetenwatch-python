@@ -3,10 +3,10 @@ import asyncio
 import json
 from pathlib import Path
 
-from cache import CacheSettings
-from models.parliament import get_parliament
-from models.politicians import get_politician
-from questions_answers import sort_questions_answers, save_answers_to_format
+from abgeordnetenwatch_python.cache import CacheSettings
+from abgeordnetenwatch_python.models.parliament import get_parliament
+from abgeordnetenwatch_python.models.politicians import get_politician
+from abgeordnetenwatch_python.questions_answers.load_qa import sort_questions_answers, save_answers_to_format
 
 
 def parse_args():

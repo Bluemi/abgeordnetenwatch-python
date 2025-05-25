@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 from tqdm import tqdm
 
-from questions_answers import save_answers_to_format, parse_questions_answers
+from abgeordnetenwatch_python.questions_answers.load_qa import save_answers_to_format, parse_questions_answers
 
 
 def parse_args():

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 
 from abgeordnetenwatch_python.models import politicians
-import abgeordnetenwatch_python.questions_answers as qa
+import abgeordnetenwatch_python.questions_answers.load_qa as qa
 from abgeordnetenwatch_python.cache import CacheSettings
 from abgeordnetenwatch_python.models.politicians import get_default_filename
 
