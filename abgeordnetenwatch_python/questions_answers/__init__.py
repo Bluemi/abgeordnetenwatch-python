@@ -5,14 +5,16 @@ import json
 import asyncio
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict, Any, Iterable
+from typing import List, Optional, Tuple, Iterable
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 import requests
-from pydantic import BaseModel
 from tqdm import tqdm
+
+from questions_answers.models import QuestionAnswerResult, _date_to_str, _str_to_date
+from cache import CacheSettings, load_questions_answers_cache, QuestionsAnswerCache, dump_questions_answers_cache
 
 
 def normalize_base_url(base_url: str) -> str:
@@ -44,47 +46,13 @@ class QuestionsAnswersParser(html.parser.HTMLParser):
         pass
 
 
-def _date_to_str(date: Optional[datetime.date]) -> str:
-    return date.strftime('%d.%m.%Y') if date is not None else 'XX.XX.XXXX'
-
-
-class QuestionAnswerResult(BaseModel):
-    url: Optional[str]
-    question_date: Optional[datetime.date] = None
-    question: Optional[str] = None
-    question_addition: Optional[str] = None
-    answer_date: Optional[datetime.date] = None
-    answer: Optional[str] = None
-    errors: List[str] = []
-
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'QuestionAnswerResult':
-        new_data = data.copy()
-        new_data['question_date'] = _str_to_date(data['question_date']) if data['question_date'] else None
-        new_data['answer_date'] = _str_to_date(data['answer_date']) if data['answer_date'] else None
-        return QuestionAnswerResult.model_validate(new_data)
-
-    def get_question_date(self) -> str:
-        return _date_to_str(self.question_date)
-
-    def get_answer_date(self) -> str:
-        return _date_to_str(self.answer_date)
-
-    def __repr__(self) -> str:
-        return ('QuestionAnswerResult(url={}, question_date={}, question={}, question_addition={}, '
-                'answer_date={}, answer={})').format(
-            self.url, self.get_question_date(), self.question, self.question_addition, self.get_answer_date(),
-            self.answer
-        )
-
-    def __str__(self) -> str:
-        return ('url={}\n  question_date={}\n  question={}\n  question_addition={}\n  answer_date={}\n  answer={}'
-                .format(self.url, self.get_question_date(), self.question, self.question_addition,
-                        self.get_answer_date(), self.answer)
-                )
-
-
-async def download_question_answer(url: str, session: aiohttp.ClientSession) -> QuestionAnswerResult:
+async def download_question_answer(
+        url: str, session: aiohttp.ClientSession, cache_settings: CacheSettings, cache: QuestionsAnswerCache
+) -> QuestionAnswerResult:
+    if cache:
+        cached_result = cache.get_by_url(url)
+        if cache_settings.cache_url(cached_result):
+            return cached_result
     result = QuestionAnswerResult(url=url)
     async with session.get(url) as r:
         if r.ok:
@@ -224,10 +192,6 @@ def parse_questions_answers(input_file: Path, input_format: Optional[str] = None
         raise ValueError('Unsupported file format: {}'.format(input_format))
 
 
-def _str_to_date(date_text: str) -> datetime.date:
-    return datetime.datetime.strptime(date_text, "%d.%m.%Y")
-
-
 def parse_txt_file(input_file: Path) -> List[QuestionAnswerResult]:
     with open(input_file, 'r', encoding='utf-8') as f:
         text = f.read()
@@ -327,8 +291,8 @@ async def async_get_questions_answers_urls(
     parser = QuestionsAnswersParser(url)
     sem = asyncio.Semaphore(threads)
 
-    async def fetch_page(page: int):
-        page_url = get_questions_answers_url(url, page)
+    async def fetch_page(page_index: int):
+        page_url = get_questions_answers_url(url, page_index)
         async with sem, session.get(page_url) as resp:
             if resp.status != 200:
                 return None
@@ -341,18 +305,15 @@ async def async_get_questions_answers_urls(
     running = True
     while running:
         tasks = [asyncio.create_task(fetch_page(p)) for p in range(pages, pages + threads)]
-        for coro in asyncio.as_completed(tasks):
-            text = await coro
+        for page_text in await asyncio.gather(*tasks):
             if pbar is not None:
                 pbar.update(1)
             old_count = len(parser.hrefs)
-            if text:
-                parser.feed(text)
+            if page_text:
+                parser.feed(page_text)
 
             # if no new urls here, stop searching for more
-            if len(parser.hrefs) == old_count:
-                running = False
-                break
+            running = len(parser.hrefs) != old_count
         pages += threads
 
     if pbar is not None:
@@ -381,19 +342,30 @@ def get_batches(frames: List, batch_size: int) -> Iterable[List]:
 
 
 async def load_questions_answers(
-        politician_url: str, verbose: bool = False, threads: int = 1
+        politician_url: str, verbose: bool = False, threads: int = 1, cache_settings: Optional[CacheSettings] = None,
 ) -> List[QuestionAnswerResult]:
+    cache = load_questions_answers_cache(cache_settings, politician_url)
+
+    # if cache level == 3: cache everything, if the file exists
+    if cache and cache_settings.cache_urls():
+        return cache.questions_answers
+
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=threads)) as session:
-        urls = await async_get_questions_answers_urls(politician_url, session, verbose=verbose, threads=threads)
+        urls = await async_get_questions_answers_urls(
+            politician_url, session, verbose=verbose, threads=threads
+        )
 
         progress = None
         if verbose:
             progress = tqdm(total=len(urls), desc="loading questions")
         results = []
         for url_batch in get_batches(urls, threads):
-            tasks = [download_question_answer(url, session) for url in url_batch]
+            tasks = [download_question_answer(url, session, cache_settings, cache) for url in url_batch]
             for coro in asyncio.as_completed(tasks):
                 results.append(await coro)
                 if progress is not None:
                     progress.update(1)
+
+    dump_questions_answers_cache(cache_settings, politician_url, QuestionsAnswerCache.new(results))
+
     return results
