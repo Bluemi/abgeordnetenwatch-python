@@ -32,7 +32,7 @@ def _get_format_choices():
     for f1 in formats:
         for f2 in formats:
             if f1 != f2:
-                choices.append(f'{f1}->{f2}')
+                choices.append(f'{f1}-{f2}')
     return choices
 
 
@@ -44,7 +44,7 @@ def main():
     args = parse_args()
     indir = args.indir
     outdir = args.outdir
-    in_format, out_format = args.format.split('->')
+    in_format, out_format = args.format.split('-')
 
     input_files = list_files(indir, in_format)
 
