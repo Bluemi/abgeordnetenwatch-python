@@ -10,7 +10,7 @@ To use this script install [python3](https://www.python.org/) and [pip](https://
 
 Install requirements with
 ```sh
-pip install -r requirements.txt
+pip install .
 ```
 
 ## Usage
@@ -19,20 +19,32 @@ You can download all questions and answers from a politician with the following 
 
 ```sh
 # -v for verbose output
-python3 abgeordnetenwatch-python/load_questions_answers.py --firstname "Angela" --lastname "Merkel"
+load_questions_answers --firstname "Angela" --lastname "Merkel"
 
 # for more options
-python3 abgeordnetenwatch-python/load_questions_answers.py --help
+load_questions_answers --help
 ```
 
-This will create a file `data/079137_Angela_Merkel.json` with all questions and answers of the specified person.
+This will create a file `data/json/079137_Angela_Merkel.json` with all questions and answers of the specified person.
+
+### Converting to txt files
+To convert json files to txt do the following:
+
+```sh
+convert_qa data/json data/txt json-txt
+
+# convert to csv
+convert_qa data/json data/csv json-csv
+```
+
+This will create a file `data/txt/079137_Angela_Merkel.txt` (for all files in `data/json`).
 
 ### Load Parliament
 To fetch all questions and answers from all politicians from a parliament you can do the following:
 ```sh
 # load "bundestag" using 16 requests simulaneously
-python3 abgeordnetenwatch-python/load_parliament_qa.py bundestag -t 16
+load_parliament_qa bundestag -t 16
 
 # for more options
-python3 abgeordnetenwatch-python/load_parliament_qa.py --help
+load_parliament_qa --help
 ```
