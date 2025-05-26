@@ -28,6 +28,7 @@ dev = ["pytest"]
 [project.scripts]
 load_parliament_qa = "abgeordnetenwatch_python.cli.load_parliament_qa:main"
 load_questions_answers = "abgeordnetenwatch_python.cli.load_questions_answers:main"
+convert_qa = "abgeordnetenwatch_python.cli.convert_qa:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

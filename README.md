@@ -25,7 +25,7 @@ python3 abgeordnetenwatch-python/load_questions_answers.py --firstname "Angela" 
 python3 abgeordnetenwatch-python/load_questions_answers.py --help
 ```
 
-This will create a file `data/079137_Angela_Merkel.csv` with all questions and answers of the specified person.
+This will create a file `data/079137_Angela_Merkel.json` with all questions and answers of the specified person.
 
 ### Load Parliament
 To fetch all questions and answers from all politicians from a parliament you can do the following:

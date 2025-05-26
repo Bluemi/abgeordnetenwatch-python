@@ -13,7 +13,8 @@ from bs4 import BeautifulSoup
 import requests
 from tqdm import tqdm
 
-from abgeordnetenwatch_python.questions_answers.models import QuestionAnswerResult, _date_to_str, _str_to_date
+from abgeordnetenwatch_python.questions_answers.models import QuestionAnswerResult, str_to_date, \
+    QuestionsAnswers
 from abgeordnetenwatch_python.cache import (CacheSettings, load_questions_answers_cache, QuestionsAnswerCache,
                                             dump_questions_answers_cache)
 
@@ -108,8 +109,8 @@ def parse_question_answer(content: str, qa_result: QuestionAnswerResult):
             qa_result.answer_date = date_from_text(answer_date_text)
 
 
-def print_questions_answers(questions_answers: List[QuestionAnswerResult]):
-    for qa_result in questions_answers:
+def print_questions_answers(questions_answers: QuestionsAnswers):
+    for qa_result in questions_answers.questions_answers:
         print('\n' + '-' * 50)
         print('\nurl:', qa_result.url)
         print(qa_result.get_question_date())
@@ -126,19 +127,15 @@ def print_questions_answers(questions_answers: List[QuestionAnswerResult]):
             print('<keine Antwort>')
 
 
-def questions_answers_to_json(filename: Path, questions_answers: List[QuestionAnswerResult]):
-    def _default(obj):
-        if isinstance(obj, datetime.date):
-            return _date_to_str(obj)
-        raise TypeError(f'Type {type(obj)} not serializable')
-    data = [qa.model_dump() for qa in questions_answers]
+def questions_answers_to_json(filename: Path, questions_answers: QuestionsAnswers):
+    data = questions_answers.model_dump(mode='json')
     with open(filename, 'w') as f:
-        json.dump(data, f, indent=2, default=_default)
+        json.dump(data, f, indent=2)
 
 
-def questions_answers_to_txt(filename: Path, questions_answers: List[QuestionAnswerResult]):
+def questions_answers_to_txt(filename: Path, questions_answers: QuestionsAnswers):
     with open(filename, 'w') as f:
-        for qa in questions_answers:
+        for qa in questions_answers.questions_answers:
             f.write('\n' + '-' * 50 + '\n\n')
             f.write('Frage vom {}:\n'.format(qa.get_question_date()))
             f.write(qa.question + '\n')
@@ -150,20 +147,20 @@ def questions_answers_to_txt(filename: Path, questions_answers: List[QuestionAns
                 f.write(qa.answer + '\n')
 
 
-def questions_answers_to_csv(filename: Path, questions_answers: List[QuestionAnswerResult]):
+def questions_answers_to_csv(filename: Path, questions_answers: QuestionsAnswers):
     with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['url', 'question_date', 'question', 'question_addition', 'answer_date', 'answer']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         writer.writeheader()
 
-        for qa in questions_answers:
-            dump_data = qa.model_dump()
+        for qa in questions_answers.questions_answers:
+            dump_data = qa.model_dump(mode='json')
             dump_data = {key: dump_data[key] for key in fieldnames}
             writer.writerow(dump_data)
 
 
-def save_answers_to_format(questions_answers: List[QuestionAnswerResult], filename: Path, fmt: str):
+def save_answers_to_format(questions_answers: QuestionsAnswers, filename: Path, fmt: str):
     if fmt == 'csv':
         questions_answers_to_csv(filename, questions_answers)
     elif fmt == 'json':
@@ -172,7 +169,7 @@ def save_answers_to_format(questions_answers: List[QuestionAnswerResult], filena
         questions_answers_to_txt(filename, questions_answers)
 
 
-def parse_questions_answers(input_file: Path, input_format: Optional[str] = None) -> List[QuestionAnswerResult]:
+def parse_questions_answers(input_file: Path, input_format: Optional[str] = None) -> QuestionsAnswers:
     if input_format is None:
         input_format = input_file.suffix[1:]
 
@@ -181,24 +178,24 @@ def parse_questions_answers(input_file: Path, input_format: Optional[str] = None
     elif input_format == 'json':
         with open(input_file, 'r') as f:
             data = json.load(f)
-            return [QuestionAnswerResult.from_dict(d) for d in data]
+            return QuestionsAnswers.model_validate(data)
     elif input_format == 'csv':
         results = []
         with open(input_file, 'r', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                results.append(QuestionAnswerResult.from_dict(row))
-        return results
+                results.append(QuestionAnswerResult.model_validate(row))
+        return QuestionsAnswers(questions_answers=results)
     else:
         raise ValueError('Unsupported file format: {}'.format(input_format))
 
 
-def parse_txt_file(input_file: Path) -> List[QuestionAnswerResult]:
+def parse_txt_file(input_file: Path) -> QuestionsAnswers:
     with open(input_file, 'r', encoding='utf-8') as f:
         text = f.read()
 
     entries = re.split(r'-{10,}', text.strip())
-    result = []
+    questions_answers = []
 
     for entry in entries:
         if not entry.strip():
@@ -212,20 +209,20 @@ def parse_txt_file(input_file: Path) -> List[QuestionAnswerResult]:
 
         qa_result = QuestionAnswerResult.model_validate({
             "url": None,
-            "question_date": _str_to_date(question_date_match.group(1)) if question_date_match else None,
+            "question_date": str_to_date(question_date_match.group(1)) if question_date_match else None,
             "question": question_match.group(0).strip() if question_match else None,
             "question_addition": addition_match.group(1).strip().replace('\n', ' ') if addition_match else None,
-            "answer_date": _str_to_date(answer_date_match.group(1)) if answer_date_match else None,
+            "answer_date": str_to_date(answer_date_match.group(1)) if answer_date_match else None,
             "answer": answer_match.group(1).strip().replace('\n', ' ') if answer_match else None,
             "errors": []
         })
 
-        result.append(qa_result)
+        questions_answers.append(qa_result)
 
-    return result
+    return QuestionsAnswers(questions_answers=questions_answers)
 
 
-def sort_questions_answers(questions_answers: List[QuestionAnswerResult], sort_by: str):
+def sort_questions_answers(questions_answers: QuestionsAnswers, sort_by: str):
     """
     Sort the given QuestionAnswerResults.
 
@@ -248,7 +245,8 @@ def sort_questions_answers(questions_answers: List[QuestionAnswerResult], sort_b
             return datetime.date.today()
     else:
         raise ValueError('Invalid sort option: {}'.format(sort_by))
-    return list(sorted(questions_answers, key=_key_function))
+    questions_answers = list(sorted(questions_answers.questions_answers, key=_key_function))
+    return QuestionsAnswers(questions_answers=questions_answers)
 
 
 def get_questions_answers_url(url: str, page: Optional[int] = None):
@@ -344,12 +342,12 @@ def get_batches(frames: List, batch_size: int) -> Iterable[List]:
 
 async def load_questions_answers(
         politician_url: str, verbose: bool = False, threads: int = 1, cache_settings: Optional[CacheSettings] = None,
-) -> List[QuestionAnswerResult]:
+) -> QuestionsAnswers:
     cache = load_questions_answers_cache(cache_settings, politician_url)
 
     # if cache level == 3: cache everything, if the file exists
     if cache and cache_settings.cache_urls():
-        return cache.questions_answers
+        return QuestionsAnswers(questions_answers=cache.questions_answers)
 
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=threads)) as session:
         urls = await async_get_questions_answers_urls(
@@ -369,4 +367,4 @@ async def load_questions_answers(
 
     dump_questions_answers_cache(cache_settings, politician_url, QuestionsAnswerCache.new(results))
 
-    return results
+    return QuestionsAnswers(questions_answers=results)

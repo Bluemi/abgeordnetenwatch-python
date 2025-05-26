@@ -16,15 +16,15 @@ class QuestionAnswerResult(BaseModel):
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'QuestionAnswerResult':
         new_data = data.copy()
-        new_data['question_date'] = _str_to_date(data['question_date']) if data['question_date'] else None
-        new_data['answer_date'] = _str_to_date(data['answer_date']) if data['answer_date'] else None
+        new_data['question_date'] = str_to_date(data['question_date']) if data['question_date'] else None
+        new_data['answer_date'] = str_to_date(data['answer_date']) if data['answer_date'] else None
         return QuestionAnswerResult.model_validate(new_data)
 
     def get_question_date(self) -> str:
-        return _date_to_str(self.question_date)
+        return date_to_str(self.question_date)
 
     def get_answer_date(self) -> str:
-        return _date_to_str(self.answer_date)
+        return date_to_str(self.answer_date)
 
     def __repr__(self) -> str:
         return ('QuestionAnswerResult(url={}, question_date={}, question={}, question_addition={}, '
@@ -40,9 +40,16 @@ class QuestionAnswerResult(BaseModel):
                 )
 
 
-def _str_to_date(date_text: str) -> datetime.date:
+class QuestionsAnswers(BaseModel):
+    questions_answers: List[QuestionAnswerResult]
+
+    def __len__(self):
+        return len(self.questions_answers)
+
+
+def str_to_date(date_text: str) -> datetime.date:
     return datetime.datetime.strptime(date_text, "%d.%m.%Y")
 
 
-def _date_to_str(date: Optional[datetime.date]) -> str:
+def date_to_str(date: Optional[datetime.date]) -> str:
     return date.strftime('%d.%m.%Y') if date is not None else 'XX.XX.XXXX'

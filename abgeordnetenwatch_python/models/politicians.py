@@ -7,7 +7,7 @@ import requests
 
 from abgeordnetenwatch_python.cache import CacheSettings
 from .party import Party
-from abgeordnetenwatch_python.questions_answers.models import QuestionAnswerResult
+from abgeordnetenwatch_python.questions_answers.models import QuestionsAnswers
 from abgeordnetenwatch_python.questions_answers.load_qa import load_questions_answers
 
 
@@ -28,7 +28,7 @@ class Politician(BaseModel):
 
     async def load_questions_answers(
             self, verbose: bool = False, threads: int = 1, cache_settings: Optional[CacheSettings] = None
-    ) -> List[QuestionAnswerResult]:
+    ) -> QuestionsAnswers:
         cache_settings = cache_settings or CacheSettings.default()
 
         return await load_questions_answers(

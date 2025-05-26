@@ -1,8 +1,8 @@
 import datetime
-import pickle
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Type
 
 from platformdirs import user_cache_dir
 from pydantic import BaseModel, Field
@@ -61,20 +61,23 @@ class CacheSettings:
         )
 
     def get_cache_path(self, identifier: CacheIdentifier) -> Path:
-        return self.dir / f'{identifier.identifier}.bin'
+        return self.dir / f'{identifier.identifier}.json'
 
-    def load_cache(self, identifier: CacheIdentifier) -> Optional[BaseModel]:
+    def load_cache(self, identifier: CacheIdentifier, cache_type: Type[BaseModel] = None) -> Optional[BaseModel]:
         path = self.get_cache_path(identifier)
         if self.level > 0 and path.exists():
-            with open(path, 'rb') as f:
-                return pickle.load(f)
+            with open(path, 'r') as f:
+                data = json.load(f)
+                if cache_type is not None:
+                    data = cache_type.model_validate(data)
+                return data
         return None
 
     def dump_cache(self, identifier: CacheIdentifier, cache: BaseModel):
         self.dir.mkdir(parents=True, exist_ok=True)
-        with open(self.get_cache_path(identifier), 'wb') as f:
+        with open(self.get_cache_path(identifier), 'w') as f:
             # noinspection PyTypeChecker
-            pickle.dump(cache, f)
+            json.dump(cache.model_dump(mode='json'), f, indent=2, sort_keys=True)
 
     def cache_urls(self) -> bool:
         return self.level >= 3
@@ -103,7 +106,7 @@ def load_questions_answers_cache(
 ) -> Optional[QuestionsAnswerCache]:
     cache_settings = cache_settings or CacheSettings.default()
     cache_identifier = CacheIdentifier.from_politician_url(politician_url)
-    return cache_settings.load_cache(cache_identifier)
+    return cache_settings.load_cache(cache_identifier, QuestionsAnswerCache)
 
 
 def dump_questions_answers_cache(

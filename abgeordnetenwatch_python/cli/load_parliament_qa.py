@@ -30,7 +30,9 @@ def parse_args():
              '2: skip loaded questions.\n3: skip politicians that were loaded before.\nDefaults to 1.'
     )
 
-    parser.add_argument('--outdir', '-o', type=Path, default=Path('data'), help='The directory to save the file to.')
+    parser.add_argument(
+        '--outdir', '-o', type=Path, default=Path('data') / 'json', help='The directory to save the file to.'
+    )
     parser.add_argument('--quiet', '-q', action='store_true', help='Do not show progress.')
 
     return parser.parse_args()
