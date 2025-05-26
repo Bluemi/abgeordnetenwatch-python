@@ -55,7 +55,7 @@ def main():
 
     for input_file in input_files:
         input_file = indir / input_file
-        output_file = outdir / input_file.with_suffix('.' + out_format)
+        output_file = outdir / input_file.relative_to(indir).with_suffix('.' + out_format)
 
         output_file.parent.mkdir(exist_ok=True, parents=True)
 
