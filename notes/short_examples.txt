@@ -2,4 +2,4 @@ Beispiele:
 
 load_questions_answers --firstname friedrich --lastname merz --threads 8
 load_parliament_qa bundestag --threads 8
-convert_qa data/json data/txt json-txt
+convert_qa data/json data/txt txt

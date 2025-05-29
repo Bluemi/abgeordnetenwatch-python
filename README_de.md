@@ -29,10 +29,10 @@ Dies wird eine Datei `data/json/079137_Angela_Merkel.json` mit allen Fragen und 
 Um json-Dateien in txt-Dateien zu konvertieren, gehen Sie wie folgt vor:
 
 ```sh
-convert_qa data/json data/txt json-txt
+convert_qa data/json data/txt txt
 
 # Konvertieren nach csv
-convert_qa data/json data/csv json-csv
+convert_qa data/json data/csv csv
 ```
 
 Dies wird eine Datei `data/txt/079137_Angela_Merkel.txt` erstellen (für alle Dateien in `data/json`).

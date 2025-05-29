@@ -4,6 +4,7 @@ from typing import List
 from tqdm import tqdm
 
 from abgeordnetenwatch_python.questions_answers.load_qa import save_answers_to_format, parse_questions_answers
+from abgeordnetenwatch_python.models.politician_dossier import PoliticianDossier
 
 
 def parse_args():
@@ -16,24 +17,13 @@ def parse_args():
     parser.add_argument(
         'outdir', type=Path, help='The directory to write converted files to.',
     )
-    format_choices = _get_format_choices()
     parser.add_argument(
-        'format', type=str, choices=format_choices,
-        help='Output format to use. One of the following: csv, json, txt. Defaults to csv.'
+        'format', type=str, choices=['csv', 'txt'],
+        help='Output format to use. One of the following: csv, txt.'
     )
     parser.add_argument('--verbose', '-v', action='store_true', help='Show progress.')
 
     return parser.parse_args()
-
-
-def _get_format_choices():
-    formats = ['csv', 'json', 'txt']
-    choices = []
-    for f1 in formats:
-        for f2 in formats:
-            if f1 != f2:
-                choices.append(f'{f1}-{f2}')
-    return choices
 
 
 def list_files(indir: Path, file_format: str) -> List[Path]:
@@ -44,9 +34,9 @@ def main():
     args = parse_args()
     indir = args.indir
     outdir = args.outdir
-    in_format, out_format = args.format.split('-')
+    out_format = args.format
 
-    input_files = list_files(indir, in_format)
+    input_files = list_files(indir, 'json')
 
     outdir.mkdir(exist_ok=True, parents=True)
 
@@ -59,7 +49,8 @@ def main():
 
         output_file.parent.mkdir(exist_ok=True, parents=True)
 
-        questions_answers = parse_questions_answers(input_file, input_format=in_format)
+        politician_dossier = PoliticianDossier.from_file(input_file)
+        questions_answers = politician_dossier.questions_answers
         save_answers_to_format(questions_answers, output_file, out_format)
 
 

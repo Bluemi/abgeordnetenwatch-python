@@ -31,10 +31,10 @@ This will create a file `data/json/079137_Angela_Merkel.json` with all questions
 To convert json files to txt do the following:
 
 ```sh
-convert_qa data/json data/txt json-txt
+convert_qa data/json data/txt txt
 
 # convert to csv
-convert_qa data/json data/csv json-csv
+convert_qa data/json data/csv csv
 ```
 
 This will create a file `data/txt/079137_Angela_Merkel.txt` (for all files in `data/json`).
