@@ -4,19 +4,18 @@ import html.parser
 import json
 import asyncio
 import re
+import warnings
 from pathlib import Path
-from typing import List, Optional, Tuple, Iterable
+from typing import List, Optional, Tuple, Iterable, Set
 
 import aiohttp
 from bs4 import BeautifulSoup
 
-import requests
 from tqdm import tqdm
 
 from models.questions_answers import QuestionAnswerResult, str_to_date, \
     QuestionsAnswers
-from abgeordnetenwatch_python.cache import (CacheSettings, load_questions_answers_cache, QuestionsAnswerCache,
-                                            dump_questions_answers_cache)
+from abgeordnetenwatch_python.cache import CacheInfo
 
 
 def normalize_base_url(base_url: str) -> str:
@@ -31,10 +30,10 @@ def normalize_base_url(base_url: str) -> str:
 
 
 class QuestionsAnswersParser(html.parser.HTMLParser):
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, hrefs: Optional[Set[str]] = None):
         super().__init__()
         self.base_url = normalize_base_url(base_url)
-        self.hrefs = set()
+        self.hrefs = hrefs if hrefs is not None else set()
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]):
         if tag == 'a':
@@ -49,18 +48,23 @@ class QuestionsAnswersParser(html.parser.HTMLParser):
 
 
 async def download_question_answer(
-        url: str, session: aiohttp.ClientSession, cache_settings: CacheSettings, cache: QuestionsAnswerCache
+        url: str, session: aiohttp.ClientSession, cache_info: Optional[CacheInfo]
 ) -> QuestionAnswerResult:
-    if cache:
-        cached_result = cache.get_by_url(url)
-        if cache_settings.cache_url(cached_result):
+    cached_result = None
+    if cache_info:
+        cached_result = cache_info.get_by_url(url)
+        if cache_info.should_cache(cached_result):
             return cached_result
     result = QuestionAnswerResult(url=url)
     async with session.get(url) as r:
         if r.ok:
             parse_question_answer(await r.text(), result)
+            if cached_result is not None and cached_result.answer is None and result.answer is not None:
+                if cache_info.num_answers_missing == 0:
+                    warnings.warn(f'Found answer, but did not expect to find one more.')
+                cache_info.num_answers_missing -= 1
         else:
-            result.errors.append(f'Page download failed with code {r.status}')
+            result.errors.append(f'Page download for "{url}" failed with code {r.status}')
     return result
 
 
@@ -256,39 +260,12 @@ def get_questions_answers_url(url: str, page: Optional[int] = None):
         return '{}/{}?page={}'.format(url, 'fragen-antworten', page)
 
 
-def get_questions_answers_urls(url: str, verbose: bool = False) -> List[str]:
-    """
-    Load all question urls from a person.
-
-    :param url: A base url like https://www.abgeordnetenwatch.de/profile/firstname-lastname/
-    :param verbose: Whether to print verbose information
-    :return: A list of urls, each pointing to a page with one question and optional answer
-    """
-    page = 0
-    parser = QuestionsAnswersParser(url)
-    while True:
-        page_url = get_questions_answers_url(url, page)
-        page += 1
-        r = requests.get(page_url)
-        if r.ok:
-            old_count = len(parser.hrefs)
-            parser.feed(r.text)
-            if old_count == len(parser.hrefs):
-                break
-        else:
-            break
-
-    if verbose:
-        print('{} questions answers found'.format(len(parser.hrefs)))
-
-    return ['https://www.abgeordnetenwatch.de' + href for href in parser.hrefs]
-
-
 async def async_get_questions_answers_urls(
-        url: str, session: aiohttp.ClientSession, verbose: bool = False, threads: int = 5,
+        url: str, session: aiohttp.ClientSession, cache_info: Optional[CacheInfo] = None, verbose: bool = False,
+        threads: int = 5,
 ) -> List[str]:
-    parser = QuestionsAnswersParser(url)
     sem = asyncio.Semaphore(threads)
+    base_url = 'https://www.abgeordnetenwatch.de'
 
     async def fetch_page(page_index: int):
         page_url = get_questions_answers_url(url, page_index)
@@ -297,31 +274,50 @@ async def async_get_questions_answers_urls(
                 return None
             return await resp.text()
 
+    total = None
+    all_urls = set()
+    # if we know how many questions are missing ...
+    if cache_info is not None and cache_info.num_questions_missing != -1:
+        # ... then, we know the number of questions missing + the cached questions = all questions
+        total = len(cache_info.questions_answers) + cache_info.num_questions_missing
+        all_urls = set([qa.url.removeprefix(base_url) for qa in cache_info.questions_answers.questions_answers])
+
+    parser = QuestionsAnswersParser(url, all_urls)
     pages = 0
     pbar = None
     if verbose:
-        pbar = tqdm(desc="collecting questions")
+        pbar = tqdm(desc="collecting questions", total=total)
+        pbar.update(len(all_urls))
     running = True
     while running:
+        # if we found all urls, stop searching for more
+        if total is not None and len(all_urls) >= total:
+            if len(all_urls) > total:
+                warnings.warn(f'Found more questions than expected. Expected {total}, found {len(all_urls)}')
+            break
+
         tasks = [asyncio.create_task(fetch_page(p)) for p in range(pages, pages + threads)]
         for page_text in await asyncio.gather(*tasks):
-            if pbar is not None:
-                pbar.update(1)
-            old_count = len(parser.hrefs)
+            old_count = len(all_urls)
             if page_text:
                 parser.feed(page_text)
 
             # if no new urls here, stop searching for more
-            running = len(parser.hrefs) != old_count
+            running = len(all_urls) != old_count
+            if pbar is not None:
+                pbar.update(len(all_urls) - old_count)
+            if cache_info is not None and not cache_info.is_question_missing():
+                running = False
         pages += threads
+
+    if total is not None:
+        if total != len(all_urls):
+            warnings.warn(f'Expected {total} questions, but found {len(all_urls)}')
 
     if pbar is not None:
         pbar.close()
 
-    if verbose:
-        print(f"{len(parser.hrefs)} questions answers found")
-
-    return [str('https://www.abgeordnetenwatch.de' + href) for href in parser.hrefs]
+    return [str(base_url + href) for href in all_urls]
 
 
 def get_batches(frames: List, batch_size: int) -> Iterable[List]:
@@ -341,17 +337,11 @@ def get_batches(frames: List, batch_size: int) -> Iterable[List]:
 
 
 async def load_questions_answers(
-        politician_url: str, verbose: bool = False, threads: int = 1, cache_settings: Optional[CacheSettings] = None,
+        politician_url: str, verbose: bool = False, threads: int = 1, cache_info: Optional[CacheInfo] = None,
 ) -> QuestionsAnswers:
-    cache = load_questions_answers_cache(cache_settings, politician_url)
-
-    # if cache level == 3: cache everything, if the file exists
-    if cache and cache_settings.cache_urls():
-        return QuestionsAnswers(questions_answers=cache.questions_answers)
-
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=threads)) as session:
         urls = await async_get_questions_answers_urls(
-            politician_url, session, verbose=verbose, threads=threads
+            politician_url, session, cache_info=cache_info, verbose=verbose, threads=threads
         )
 
         progress = None
@@ -359,12 +349,10 @@ async def load_questions_answers(
             progress = tqdm(total=len(urls), desc="loading questions")
         results: List[QuestionAnswerResult] = []
         for url_batch in get_batches(urls, threads):
-            tasks = [download_question_answer(url, session, cache_settings, cache) for url in url_batch]
+            tasks = [download_question_answer(url, session, cache_info) for url in url_batch]
             for coro in asyncio.as_completed(tasks):
                 results.append(await coro)
                 if progress is not None:
                     progress.update(1)
-
-    dump_questions_answers_cache(cache_settings, politician_url, QuestionsAnswerCache.new(results))
 
     return QuestionsAnswers(questions_answers=results)

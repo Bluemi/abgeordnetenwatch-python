@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import json
 import sys
 from pathlib import Path
 from typing import List
@@ -8,17 +9,13 @@ from abgeordnetenwatch_python.models import politicians
 import abgeordnetenwatch_python.questions_answers.load_qa as qa
 from abgeordnetenwatch_python.cache import CacheSettings
 from abgeordnetenwatch_python.models.politicians import get_default_filename
+from models.politician_dossier import load_politician_dossier, PoliticianDossier
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Download questions/answers from politicians from abgeordnetenwatch.de and export to csv, txt or '
                     'json.'
-    )
-    parser.add_argument(
-        '--url', type=str,
-        help='Url of the politician to search for. '
-             'For example https://www.abgeordnetenwatch.de/profile/firstname-lastname'
     )
     parser.add_argument('--id', '-i', type=int, help='Id of the politician to search for.')
     parser.add_argument('--firstname', '-fn', type=str, help='Firstname of the politician to search for.')
@@ -67,55 +64,48 @@ def choose_from_list(politician_list: List[politicians.Politician]) -> politicia
 async def async_main():
     parser, args = parse_args()
     outdir: Path = args.outdir
+    verbose = not args.quiet
 
-    politician = None
+    filter_args = {}
+    if args.firstname is not None:
+        filter_args['first_name'] = args.firstname
+    if args.lastname is not None:
+        filter_args['last_name'] = args.lastname
+    if args.id is not None:
+        filter_args['id'] = args.id
 
-    cache_settings = CacheSettings.default(level=args.cache_level)
+    if not filter_args:
+        parser.print_usage()
+        print('Please provide --id --firstname or --lastname')
+        sys.exit(1)
 
-    url = args.url
-    if url is not None:
-        questions_answers = await qa.load_questions_answers(
-            url, verbose=not args.quiet, threads=args.threads, cache_settings=cache_settings,
-        )
+    politician_search_result = politicians.get_politicians(**filter_args)
+    if len(politician_search_result) == 0:
+        print('no politician found with the given arguments')
+        return
+    elif len(politician_search_result) == 1:
+        politician = politician_search_result[0]
     else:
-        filter_args = {}
-        if args.firstname is not None:
-            filter_args['first_name'] = args.firstname
-        if args.lastname is not None:
-            filter_args['last_name'] = args.lastname
-        if args.id is not None:
-            filter_args['id'] = args.id
+        politician = choose_from_list(politician_search_result)
 
-        if not filter_args:
-            parser.print_usage()
-            print('Please provide --url --id --firstname or --lastname')
-            sys.exit(1)
+    if verbose:
+        print(f'Downloading {politician.first_name} {politician.last_name} {politician.id}')
 
-        politician_search_result = politicians.get_politicians(**filter_args)
-        if len(politician_search_result) == 0:
-            print('no politician found with the given arguments')
-            sys.exit(1)
-        elif len(politician_search_result) == 1:
-            politician = politician_search_result[0]
-        else:
-            politician = choose_from_list(politician_search_result)
+    filename = get_default_filename(politician, outdir)
 
-        if not args.quiet:
-            print(f'Downloading {politician}')
+    # load cache
+    cache = PoliticianDossier.from_file(filename)
 
-        questions_answers = await politician.load_questions_answers(
-            verbose=not args.quiet, threads=args.threads, cache_settings=cache_settings,
-        )
+    politician_dossier = await load_politician_dossier(
+        politician, verbose=verbose, threads=args.threads, cache=cache
+    )
 
-    # sort
-    questions_answers = qa.sort_questions_answers(questions_answers, args.sort_by)
+    politician_dossier.sort_questions_answers(args.sort_by)
 
-    outdir.mkdir(exist_ok=True, parents=True)
-    filename = get_default_filename(politician or url, outdir)
-    qa.save_answers_to_format(questions_answers, Path(filename), 'json')
+    politician_dossier.dump_to_file(filename)
 
-    if not args.quiet:
-        print('Saved result in', filename)
+    if verbose:
+        print(f'Saved {str(politician)} to {filename}')
 
 
 def main():

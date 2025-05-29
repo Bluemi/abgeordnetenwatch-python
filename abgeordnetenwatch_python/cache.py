@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Type
 from platformdirs import user_cache_dir
 from pydantic import BaseModel, Field
 
-from models.questions_answers import QuestionAnswerResult
+from models.questions_answers import QuestionAnswerResult, QuestionsAnswers
 
 MAX_WAIT_TIME_DELTA = datetime.timedelta(days=365)
 
@@ -115,3 +115,29 @@ def dump_questions_answers_cache(
     cache_settings = cache_settings or CacheSettings.default()
     cache_identifier = CacheIdentifier.from_politician_url(politician_url)
     return cache_settings.dump_cache(cache_identifier, cache)
+
+
+class CacheInfo(BaseModel):
+    questions_answers: QuestionsAnswers
+    num_questions_missing: int = -1
+    num_answers_missing: int = -1
+    lookup: Optional[Dict[str, QuestionAnswerResult]] = Field(None, exclude=True)
+
+    def get_by_url(self, url: str) -> Optional[QuestionAnswerResult]:
+        if self.lookup is None:
+            self.lookup = {qa.url: qa for qa in self.questions_answers.questions_answers}
+        return self.lookup.get(url)
+
+    def should_cache(self, cache_qa: Optional[QuestionAnswerResult]) -> bool:
+        if cache_qa is None:
+            return False
+
+        # always cache if the answer is given
+        if cache_qa.answer is not None:
+            return True
+
+        # cache, if there is no answer anymore to expect
+        return self.num_answers_missing == 0
+
+    def is_question_missing(self) -> bool:
+        return self.num_questions_missing != 0

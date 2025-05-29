@@ -37,6 +37,9 @@ class Politician(BaseModel):
         return 'Politician(id={}, first_name={} last_name={}, party={}, residence={})' \
                .format(self.id, self.first_name, self.last_name, self.party, self.residence)
 
+    def __str__(self) -> str:
+        return f'{self.first_name} {self.last_name} {self.id} ({self.party.label if self.party else "unknown"})'
+
     def get_full_name(self) -> str:
         """
         :return: the full name of the politician ("firstname lastname").
