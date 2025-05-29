@@ -5,7 +5,7 @@ from typing import List, Optional
 import requests
 from pydantic import BaseModel
 
-from .parliament import Parliament
+from abgeordnetenwatch_python.models.parliament import Parliament
 
 
 class ParliamentPeriodType(StrEnum):
@@ -28,6 +28,9 @@ class ParliamentPeriod(BaseModel):
 
     def is_legislature(self) -> bool:
         return self.type == ParliamentPeriodType.LEGISLATURE
+
+    def is_election(self) -> bool:
+        return self.type == ParliamentPeriodType.ELECTION
 
 
 def get_parliament_periods(

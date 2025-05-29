@@ -3,8 +3,8 @@ from typing import List, Optional, Dict, Any
 import requests
 from pydantic import BaseModel
 
-from .parliament_period import ParliamentPeriod, get_parliament_period
-from .politicians import Politician, get_politician
+from abgeordnetenwatch_python.models.parliament_period import ParliamentPeriod, get_parliament_period
+from abgeordnetenwatch_python.models.politicians import Politician, get_politician
 
 
 class CandidacyMandate(BaseModel):

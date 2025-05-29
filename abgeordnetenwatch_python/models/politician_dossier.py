@@ -5,11 +5,11 @@ from typing import Optional, List
 
 from pydantic import BaseModel, ValidationError
 
-from cache import CacheInfo
-from questions_answers.load_qa import load_questions_answers, sort_questions_answers
-from .candidacy_mandate import get_candidacy_mandates
+from abgeordnetenwatch_python.cache import CacheInfo
+from abgeordnetenwatch_python.questions_answers.load_qa import load_questions_answers, sort_questions_answers
+from abgeordnetenwatch_python.models.candidacy_mandate import get_candidacy_mandates
 from abgeordnetenwatch_python.models.politicians import Politician
-from .questions_answers import QuestionsAnswers
+from abgeordnetenwatch_python.models.questions_answers import QuestionsAnswers
 
 
 class PoliticianDossier(BaseModel):
@@ -53,8 +53,6 @@ async def load_politician_dossier(
     :param threads: The number of threads to use for loading the questions and answers.
     """
     candidacy_mandates = get_candidacy_mandates(politician_id=politician.id)
-    if not candidacy_mandates:
-        raise ValueError(f'No candidacy mandates found for politician {politician.id}')
 
     mandate_ids = [cm.id for cm in candidacy_mandates]
 
@@ -76,3 +74,14 @@ async def load_politician_dossier(
     )
 
     return PoliticianDossier(politician=politician, mandate_ids=mandate_ids, questions_answers=questions_answers)
+
+
+async def load_politician_dossier_with_cache_file(
+        politician: Politician, filename: Path, sort_by: Optional[str] = None, verbose: bool = False, threads: int = 1
+):
+    cache = PoliticianDossier.from_file(filename)
+    politician_dossier = await load_politician_dossier(
+        politician, verbose=verbose, threads=threads, cache=cache
+    )
+    politician_dossier.sort_questions_answers(sort_by)
+    politician_dossier.dump_to_file(filename)

@@ -13,8 +13,7 @@ from bs4 import BeautifulSoup
 
 from tqdm import tqdm
 
-from models.questions_answers import QuestionAnswerResult, str_to_date, \
-    QuestionsAnswers
+from abgeordnetenwatch_python.models.questions_answers import QuestionAnswerResult, str_to_date, QuestionsAnswers
 from abgeordnetenwatch_python.cache import CacheInfo
 
 

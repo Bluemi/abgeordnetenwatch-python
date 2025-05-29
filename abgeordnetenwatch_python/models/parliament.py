@@ -16,12 +16,16 @@ class Parliament(BaseModel):
 
     def get_politician_ids(self, verbose=True) -> List[int]:
         # local imports to prevent cyclic import
-        from .parliament_period import get_parliament_periods
-        from .candidacy_mandate import get_candidacy_mandates
+        from abgeordnetenwatch_python.models.parliament_period import get_parliament_periods
+        from abgeordnetenwatch_python.models.candidacy_mandate import get_candidacy_mandates
 
         politician_ids = set()
 
         parliament_periods = get_parliament_periods(parliament_id=self.id, limit=1000)
+
+        # skip election periods
+        parliament_periods = [pp for pp in parliament_periods if pp.is_legislature()]
+
         for index, pp in enumerate(parliament_periods):
             if verbose:
                 print('loading parliament period [{}/{}]: {}'.format(index+1, len(parliament_periods), pp.label),

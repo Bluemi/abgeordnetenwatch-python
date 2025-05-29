@@ -4,10 +4,10 @@ from pydantic import BaseModel
 
 import requests
 
-from abgeordnetenwatch_python.cache import CacheSettings
-from .party import Party
-from models.questions_answers import QuestionsAnswers
+from abgeordnetenwatch_python.models.party import Party
+from abgeordnetenwatch_python.models.questions_answers import QuestionsAnswers
 from abgeordnetenwatch_python.questions_answers.load_qa import load_questions_answers
+from abgeordnetenwatch_python.cache import CacheInfo
 
 
 class Politician(BaseModel):
@@ -22,12 +22,10 @@ class Politician(BaseModel):
     residence: Optional[str] = None
 
     async def load_questions_answers(
-            self, verbose: bool = False, threads: int = 1, cache_settings: Optional[CacheSettings] = None
+            self, verbose: bool = False, threads: int = 1, cache_info: Optional[CacheInfo] = None
     ) -> QuestionsAnswers:
-        cache_settings = cache_settings or CacheSettings.default()
-
         return await load_questions_answers(
-            self.abgeordnetenwatch_url, verbose=verbose, threads=threads, cache_settings=cache_settings
+            self.abgeordnetenwatch_url, verbose=verbose, threads=threads, cache_info=cache_info
         )
 
     def get_label(self) -> str:

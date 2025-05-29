@@ -1,15 +1,12 @@
 import argparse
 import asyncio
-import json
 import sys
 from pathlib import Path
 from typing import List
 
 from abgeordnetenwatch_python.models import politicians
-import abgeordnetenwatch_python.questions_answers.load_qa as qa
-from abgeordnetenwatch_python.cache import CacheSettings
 from abgeordnetenwatch_python.models.politicians import get_default_filename
-from models.politician_dossier import load_politician_dossier, PoliticianDossier
+from abgeordnetenwatch_python.models.politician_dossier import load_politician_dossier_with_cache_file
 
 
 def parse_args():
@@ -92,17 +89,9 @@ async def async_main():
         print(f'Downloading {politician.first_name} {politician.last_name} {politician.id}')
 
     filename = get_default_filename(politician, outdir)
-
-    # load cache
-    cache = PoliticianDossier.from_file(filename)
-
-    politician_dossier = await load_politician_dossier(
-        politician, verbose=verbose, threads=args.threads, cache=cache
+    await load_politician_dossier_with_cache_file(
+        politician, filename, sort_by=args.sort_by, verbose=verbose, threads=args.threads
     )
-
-    politician_dossier.sort_questions_answers(args.sort_by)
-
-    politician_dossier.dump_to_file(filename)
 
     if verbose:
         print(f'Saved {str(politician)} to {filename}')
