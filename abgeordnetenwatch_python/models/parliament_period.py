@@ -1,3 +1,5 @@
+import datetime
+from enum import StrEnum
 from typing import List, Optional
 
 import requests
@@ -6,13 +8,26 @@ from pydantic import BaseModel
 from .parliament import Parliament
 
 
+class ParliamentPeriodType(StrEnum):
+    ELECTION = 'election'
+    LEGISLATURE = 'legislature'
+
+
 class ParliamentPeriod(BaseModel):
     id: int
     label: str
     parliament: Parliament
+    start_date_period: datetime.date
+    end_date_period: datetime.date
+    type: ParliamentPeriodType
 
     def __repr__(self):
-        return 'ParliamentPeriod(id={} label="{}" parliament={})'.format(self.id, self.label, self.parliament_id)
+        return 'ParliamentPeriod(id={} label="{}" parliament={} period={} - {})'.format(
+            self.id, self.label, self.parliament.id, self.start_date_period, self.end_date_period
+        )
+
+    def is_legislature(self) -> bool:
+        return self.type == ParliamentPeriodType.LEGISLATURE
 
 
 def get_parliament_periods(

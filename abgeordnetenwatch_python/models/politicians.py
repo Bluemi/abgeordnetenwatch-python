@@ -7,7 +7,7 @@ import requests
 
 from abgeordnetenwatch_python.cache import CacheSettings
 from .party import Party
-from abgeordnetenwatch_python.questions_answers.models import QuestionsAnswers
+from models.questions_answers import QuestionsAnswers
 from abgeordnetenwatch_python.questions_answers.load_qa import load_questions_answers
 
 
@@ -16,6 +16,8 @@ class Politician(BaseModel):
     first_name: str
     last_name: str
     api_url: str
+    statistic_questions: Optional[int] = None
+    statistic_questions_answered: Optional[int] = None
     abgeordnetenwatch_url: str
     party: Optional[Party] = None
     residence: Optional[str] = None

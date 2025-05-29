@@ -46,6 +46,10 @@ class QuestionsAnswers(BaseModel):
     def __len__(self):
         return len(self.questions_answers)
 
+    @staticmethod
+    def empty() -> 'QuestionsAnswers':
+        return QuestionsAnswers(questions_answers=[])
+
 
 def str_to_date(date_text: str) -> datetime.date:
     return datetime.datetime.strptime(date_text, "%d.%m.%Y")

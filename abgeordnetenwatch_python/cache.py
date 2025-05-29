@@ -7,7 +7,7 @@ from typing import List, Optional, Dict, Type
 from platformdirs import user_cache_dir
 from pydantic import BaseModel, Field
 
-from abgeordnetenwatch_python.questions_answers.models import QuestionAnswerResult
+from models.questions_answers import QuestionAnswerResult
 
 MAX_WAIT_TIME_DELTA = datetime.timedelta(days=365)
 
