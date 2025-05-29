@@ -112,22 +112,3 @@ def get_default_filename(politician: Union[Politician, str], outdir: Path) -> Pa
     elif isinstance(politician, Politician):
         return outdir / f'{politician.id:0>6}_{politician.first_name}_{politician.last_name}.json'
     raise TypeError(f'Invalid type for politician: {type(politician)}')
-
-
-def normalize_for_url(text: str) -> str:
-    text = text.lower()
-
-    replacements = [
-        (' ', '-'),
-        ('ä', 'ae'),
-        ('ö', 'oe'),
-        ('ü', 'ue'),
-        ('ß', 'ss'),
-    ]
-    for old, new in replacements:
-        text = text.replace(old, new)
-
-    text = unicodedata.normalize('NFD', text)
-    text = text.encode('ascii', 'ignore').decode('ascii')
-
-    return text
