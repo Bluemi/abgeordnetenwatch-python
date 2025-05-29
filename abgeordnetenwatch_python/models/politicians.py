@@ -1,4 +1,3 @@
-import unicodedata
 from pathlib import Path
 from typing import List, Optional, Union
 from pydantic import BaseModel
