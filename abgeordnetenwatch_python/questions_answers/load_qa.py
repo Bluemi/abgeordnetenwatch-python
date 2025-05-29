@@ -5,14 +5,18 @@ import json
 import asyncio
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple, Dict, Any, Iterable
+from typing import List, Optional, Tuple, Iterable
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 import requests
-from pydantic import BaseModel
 from tqdm import tqdm
+
+from abgeordnetenwatch_python.questions_answers.models import QuestionAnswerResult, str_to_date, \
+    QuestionsAnswers
+from abgeordnetenwatch_python.cache import (CacheSettings, load_questions_answers_cache, QuestionsAnswerCache,
+                                            dump_questions_answers_cache)
 
 
 def normalize_base_url(base_url: str) -> str:
@@ -44,47 +48,13 @@ class QuestionsAnswersParser(html.parser.HTMLParser):
         pass
 
 
-def _date_to_str(date: Optional[datetime.date]) -> str:
-    return date.strftime('%d.%m.%Y') if date is not None else 'XX.XX.XXXX'
-
-
-class QuestionAnswerResult(BaseModel):
-    url: Optional[str]
-    question_date: Optional[datetime.date] = None
-    question: Optional[str] = None
-    question_addition: Optional[str] = None
-    answer_date: Optional[datetime.date] = None
-    answer: Optional[str] = None
-    errors: List[str] = []
-
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'QuestionAnswerResult':
-        new_data = data.copy()
-        new_data['question_date'] = _str_to_date(data['question_date']) if data['question_date'] else None
-        new_data['answer_date'] = _str_to_date(data['answer_date']) if data['answer_date'] else None
-        return QuestionAnswerResult.model_validate(new_data)
-
-    def get_question_date(self) -> str:
-        return _date_to_str(self.question_date)
-
-    def get_answer_date(self) -> str:
-        return _date_to_str(self.answer_date)
-
-    def __repr__(self) -> str:
-        return ('QuestionAnswerResult(url={}, question_date={}, question={}, question_addition={}, '
-                'answer_date={}, answer={})').format(
-            self.url, self.get_question_date(), self.question, self.question_addition, self.get_answer_date(),
-            self.answer
-        )
-
-    def __str__(self) -> str:
-        return ('url={}\n  question_date={}\n  question={}\n  question_addition={}\n  answer_date={}\n  answer={}'
-                .format(self.url, self.get_question_date(), self.question, self.question_addition,
-                        self.get_answer_date(), self.answer)
-                )
-
-
-async def download_question_answer(url: str, session: aiohttp.ClientSession) -> QuestionAnswerResult:
+async def download_question_answer(
+        url: str, session: aiohttp.ClientSession, cache_settings: CacheSettings, cache: QuestionsAnswerCache
+) -> QuestionAnswerResult:
+    if cache:
+        cached_result = cache.get_by_url(url)
+        if cache_settings.cache_url(cached_result):
+            return cached_result
     result = QuestionAnswerResult(url=url)
     async with session.get(url) as r:
         if r.ok:
@@ -139,8 +109,8 @@ def parse_question_answer(content: str, qa_result: QuestionAnswerResult):
             qa_result.answer_date = date_from_text(answer_date_text)
 
 
-def print_questions_answers(questions_answers: List[QuestionAnswerResult]):
-    for qa_result in questions_answers:
+def print_questions_answers(questions_answers: QuestionsAnswers):
+    for qa_result in questions_answers.questions_answers:
         print('\n' + '-' * 50)
         print('\nurl:', qa_result.url)
         print(qa_result.get_question_date())
@@ -157,19 +127,15 @@ def print_questions_answers(questions_answers: List[QuestionAnswerResult]):
             print('<keine Antwort>')
 
 
-def questions_answers_to_json(filename: Path, questions_answers: List[QuestionAnswerResult]):
-    def _default(obj):
-        if isinstance(obj, datetime.date):
-            return _date_to_str(obj)
-        raise TypeError(f'Type {type(obj)} not serializable')
-    data = [qa.model_dump() for qa in questions_answers]
+def questions_answers_to_json(filename: Path, questions_answers: QuestionsAnswers):
+    data = questions_answers.model_dump(mode='json')
     with open(filename, 'w') as f:
-        json.dump(data, f, indent=2, default=_default)
+        json.dump(data, f, indent=2)
 
 
-def questions_answers_to_txt(filename: Path, questions_answers: List[QuestionAnswerResult]):
+def questions_answers_to_txt(filename: Path, questions_answers: QuestionsAnswers):
     with open(filename, 'w') as f:
-        for qa in questions_answers:
+        for qa in questions_answers.questions_answers:
             f.write('\n' + '-' * 50 + '\n\n')
             f.write('Frage vom {}:\n'.format(qa.get_question_date()))
             f.write(qa.question + '\n')
@@ -181,20 +147,20 @@ def questions_answers_to_txt(filename: Path, questions_answers: List[QuestionAns
                 f.write(qa.answer + '\n')
 
 
-def questions_answers_to_csv(filename: Path, questions_answers: List[QuestionAnswerResult]):
+def questions_answers_to_csv(filename: Path, questions_answers: QuestionsAnswers):
     with open(filename, 'w', newline='') as csvfile:
         fieldnames = ['url', 'question_date', 'question', 'question_addition', 'answer_date', 'answer']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         writer.writeheader()
 
-        for qa in questions_answers:
-            dump_data = qa.model_dump()
+        for qa in questions_answers.questions_answers:
+            dump_data = qa.model_dump(mode='json')
             dump_data = {key: dump_data[key] for key in fieldnames}
             writer.writerow(dump_data)
 
 
-def save_answers_to_format(questions_answers: List[QuestionAnswerResult], filename: Path, fmt: str):
+def save_answers_to_format(questions_answers: QuestionsAnswers, filename: Path, fmt: str):
     if fmt == 'csv':
         questions_answers_to_csv(filename, questions_answers)
     elif fmt == 'json':
@@ -203,7 +169,7 @@ def save_answers_to_format(questions_answers: List[QuestionAnswerResult], filena
         questions_answers_to_txt(filename, questions_answers)
 
 
-def parse_questions_answers(input_file: Path, input_format: Optional[str] = None) -> List[QuestionAnswerResult]:
+def parse_questions_answers(input_file: Path, input_format: Optional[str] = None) -> QuestionsAnswers:
     if input_format is None:
         input_format = input_file.suffix[1:]
 
@@ -212,28 +178,24 @@ def parse_questions_answers(input_file: Path, input_format: Optional[str] = None
     elif input_format == 'json':
         with open(input_file, 'r') as f:
             data = json.load(f)
-            return [QuestionAnswerResult.from_dict(d) for d in data]
+            return QuestionsAnswers.model_validate(data)
     elif input_format == 'csv':
         results = []
         with open(input_file, 'r', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                results.append(QuestionAnswerResult.from_dict(row))
-        return results
+                results.append(QuestionAnswerResult.model_validate(row))
+        return QuestionsAnswers(questions_answers=results)
     else:
         raise ValueError('Unsupported file format: {}'.format(input_format))
 
 
-def _str_to_date(date_text: str) -> datetime.date:
-    return datetime.datetime.strptime(date_text, "%d.%m.%Y")
-
-
-def parse_txt_file(input_file: Path) -> List[QuestionAnswerResult]:
+def parse_txt_file(input_file: Path) -> QuestionsAnswers:
     with open(input_file, 'r', encoding='utf-8') as f:
         text = f.read()
 
     entries = re.split(r'-{10,}', text.strip())
-    result = []
+    questions_answers = []
 
     for entry in entries:
         if not entry.strip():
@@ -247,20 +209,20 @@ def parse_txt_file(input_file: Path) -> List[QuestionAnswerResult]:
 
         qa_result = QuestionAnswerResult.model_validate({
             "url": None,
-            "question_date": _str_to_date(question_date_match.group(1)) if question_date_match else None,
+            "question_date": str_to_date(question_date_match.group(1)) if question_date_match else None,
             "question": question_match.group(0).strip() if question_match else None,
             "question_addition": addition_match.group(1).strip().replace('\n', ' ') if addition_match else None,
-            "answer_date": _str_to_date(answer_date_match.group(1)) if answer_date_match else None,
+            "answer_date": str_to_date(answer_date_match.group(1)) if answer_date_match else None,
             "answer": answer_match.group(1).strip().replace('\n', ' ') if answer_match else None,
             "errors": []
         })
 
-        result.append(qa_result)
+        questions_answers.append(qa_result)
 
-    return result
+    return QuestionsAnswers(questions_answers=questions_answers)
 
 
-def sort_questions_answers(questions_answers: List[QuestionAnswerResult], sort_by: str):
+def sort_questions_answers(questions_answers: QuestionsAnswers, sort_by: str):
     """
     Sort the given QuestionAnswerResults.
 
@@ -283,7 +245,8 @@ def sort_questions_answers(questions_answers: List[QuestionAnswerResult], sort_b
             return datetime.date.today()
     else:
         raise ValueError('Invalid sort option: {}'.format(sort_by))
-    return list(sorted(questions_answers, key=_key_function))
+    questions_answers = list(sorted(questions_answers.questions_answers, key=_key_function))
+    return QuestionsAnswers(questions_answers=questions_answers)
 
 
 def get_questions_answers_url(url: str, page: Optional[int] = None):
@@ -327,8 +290,8 @@ async def async_get_questions_answers_urls(
     parser = QuestionsAnswersParser(url)
     sem = asyncio.Semaphore(threads)
 
-    async def fetch_page(page: int):
-        page_url = get_questions_answers_url(url, page)
+    async def fetch_page(page_index: int):
+        page_url = get_questions_answers_url(url, page_index)
         async with sem, session.get(page_url) as resp:
             if resp.status != 200:
                 return None
@@ -341,18 +304,15 @@ async def async_get_questions_answers_urls(
     running = True
     while running:
         tasks = [asyncio.create_task(fetch_page(p)) for p in range(pages, pages + threads)]
-        for coro in asyncio.as_completed(tasks):
-            text = await coro
+        for page_text in await asyncio.gather(*tasks):
             if pbar is not None:
                 pbar.update(1)
             old_count = len(parser.hrefs)
-            if text:
-                parser.feed(text)
+            if page_text:
+                parser.feed(page_text)
 
             # if no new urls here, stop searching for more
-            if len(parser.hrefs) == old_count:
-                running = False
-                break
+            running = len(parser.hrefs) != old_count
         pages += threads
 
     if pbar is not None:
@@ -381,19 +341,30 @@ def get_batches(frames: List, batch_size: int) -> Iterable[List]:
 
 
 async def load_questions_answers(
-        politician_url: str, verbose: bool = False, threads: int = 1
-) -> List[QuestionAnswerResult]:
+        politician_url: str, verbose: bool = False, threads: int = 1, cache_settings: Optional[CacheSettings] = None,
+) -> QuestionsAnswers:
+    cache = load_questions_answers_cache(cache_settings, politician_url)
+
+    # if cache level == 3: cache everything, if the file exists
+    if cache and cache_settings.cache_urls():
+        return QuestionsAnswers(questions_answers=cache.questions_answers)
+
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=threads)) as session:
-        urls = await async_get_questions_answers_urls(politician_url, session, verbose=verbose, threads=threads)
+        urls = await async_get_questions_answers_urls(
+            politician_url, session, verbose=verbose, threads=threads
+        )
 
         progress = None
         if verbose:
             progress = tqdm(total=len(urls), desc="loading questions")
-        results = []
+        results: List[QuestionAnswerResult] = []
         for url_batch in get_batches(urls, threads):
-            tasks = [download_question_answer(url, session) for url in url_batch]
+            tasks = [download_question_answer(url, session, cache_settings, cache) for url in url_batch]
             for coro in asyncio.as_completed(tasks):
                 results.append(await coro)
                 if progress is not None:
                     progress.update(1)
-    return results
+
+    dump_questions_answers_cache(cache_settings, politician_url, QuestionsAnswerCache.new(results))
+
+    return QuestionsAnswers(questions_answers=results)

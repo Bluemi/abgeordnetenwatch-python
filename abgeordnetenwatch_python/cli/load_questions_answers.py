@@ -1,12 +1,13 @@
 import argparse
 import asyncio
-import os
 import sys
 from pathlib import Path
 from typing import List
 
 from abgeordnetenwatch_python.models import politicians
-import questions_answers as qa
+import abgeordnetenwatch_python.questions_answers.load_qa as qa
+from abgeordnetenwatch_python.cache import CacheSettings
+from abgeordnetenwatch_python.models.politicians import get_default_filename
 
 
 def parse_args():
@@ -29,12 +30,15 @@ def parse_args():
         help='Sort by date of question or answer. Can be one of the following: answer question. Defaults to answer.'
     )
     parser.add_argument('--threads', '-t', type=int, default=1, help='Number of threads to use for downloading.')
+    parser.add_argument(
+        '--cache-level', '-c', type=int, default=1,
+        help='Cache level to use for requests.\n0: no cache.\n1: skip loaded questions, were the answer is cached.\n'
+             '2: skip loaded questions.\n3: skip politicians that were loaded before.\nDefaults to 1.'
+    )
 
     parser.add_argument(
-        '--format', type=str, default='csv', choices=['csv', 'json', 'txt'],
-        help='Output format to use. One of the following: csv, json, txt. Defaults to csv.'
+        '--outdir', '-o', type=Path, default=Path('data') / 'json', help='The directory to save the file to.'
     )
-    parser.add_argument('--outdir', '-o', type=str, default='data', help='The directory to save the file to.')
     parser.add_argument('--quiet', '-q', action='store_true', help='Do not show progress.')
 
     return parser, parser.parse_args()
@@ -62,12 +66,17 @@ def choose_from_list(politician_list: List[politicians.Politician]) -> politicia
 
 async def async_main():
     parser, args = parse_args()
+    outdir: Path = args.outdir
 
     politician = None
 
+    cache_settings = CacheSettings.default(level=args.cache_level)
+
     url = args.url
     if url is not None:
-        questions_answers = await qa.load_questions_answers(url, verbose=not args.quiet, threads=args.threads)
+        questions_answers = await qa.load_questions_answers(
+            url, verbose=not args.quiet, threads=args.threads, cache_settings=cache_settings,
+        )
     else:
         filter_args = {}
         if args.firstname is not None:
@@ -79,7 +88,7 @@ async def async_main():
 
         if not filter_args:
             parser.print_usage()
-            print('Please provide at least --id --firstname or --lastname')
+            print('Please provide --url --id --firstname or --lastname')
             sys.exit(1)
 
         politician_search_result = politicians.get_politicians(**filter_args)
@@ -94,19 +103,16 @@ async def async_main():
         if not args.quiet:
             print(f'Downloading {politician}')
 
-        questions_answers = await politician.load_questions_answers(verbose=not args.quiet, threads=args.threads)
+        questions_answers = await politician.load_questions_answers(
+            verbose=not args.quiet, threads=args.threads, cache_settings=cache_settings,
+        )
 
     # sort
     questions_answers = qa.sort_questions_answers(questions_answers, args.sort_by)
 
-    os.makedirs('data', exist_ok=True)
-    ending = args.format
-    if politician is None:
-        u = [u for u in url.split('/') if u][-1]
-        filename = f'data/{u}.{ending}'
-    else:
-        filename = f'data/{politician.id:0>6}_{politician.first_name}_{politician.last_name}.{ending}'
-    qa.save_answers_to_format(questions_answers, Path(filename), args.format)
+    outdir.mkdir(exist_ok=True, parents=True)
+    filename = get_default_filename(politician or url, outdir)
+    qa.save_answers_to_format(questions_answers, Path(filename), 'json')
 
     if not args.quiet:
         print('Saved result in', filename)

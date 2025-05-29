@@ -18,8 +18,8 @@ dependencies = [
 	"requests>=2.31",
 	"tqdm>=4.66",
 	"aiohttp>=3.11",
-	"pydantic>=2.11"
-
+	"pydantic>=2.11",
+	"platformdirs>=4.3.8"
 ]
 
 [project.optional-dependencies]
@@ -28,6 +28,7 @@ dev = ["pytest"]
 [project.scripts]
 load_parliament_qa = "abgeordnetenwatch_python.cli.load_parliament_qa:main"
 load_questions_answers = "abgeordnetenwatch_python.cli.load_questions_answers:main"
+convert_qa = "abgeordnetenwatch_python.cli.convert_qa:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

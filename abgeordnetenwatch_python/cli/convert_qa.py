@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 from tqdm import tqdm
 
-from questions_answers import save_answers_to_format, parse_questions_answers
+from abgeordnetenwatch_python.questions_answers.load_qa import save_answers_to_format, parse_questions_answers
 
 
 def parse_args():
@@ -32,7 +32,7 @@ def _get_format_choices():
     for f1 in formats:
         for f2 in formats:
             if f1 != f2:
-                choices.append(f'{f1}->{f2}')
+                choices.append(f'{f1}-{f2}')
     return choices
 
 
@@ -44,7 +44,7 @@ def main():
     args = parse_args()
     indir = args.indir
     outdir = args.outdir
-    in_format, out_format = args.format.split('->')
+    in_format, out_format = args.format.split('-')
 
     input_files = list_files(indir, in_format)
 
@@ -55,7 +55,7 @@ def main():
 
     for input_file in input_files:
         input_file = indir / input_file
-        output_file = outdir / input_file.with_suffix('.' + out_format)
+        output_file = outdir / input_file.relative_to(indir).with_suffix('.' + out_format)
 
         output_file.parent.mkdir(exist_ok=True, parents=True)
 

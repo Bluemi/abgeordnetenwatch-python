@@ -1,9 +1,14 @@
-from typing import List, Optional
+import unicodedata
+from pathlib import Path
+from typing import List, Optional, Union
 from pydantic import BaseModel
 
 import requests
+
+from abgeordnetenwatch_python.cache import CacheSettings
 from .party import Party
-from abgeordnetenwatch_python.questions_answers import QuestionAnswerResult, load_questions_answers
+from abgeordnetenwatch_python.questions_answers.models import QuestionsAnswers
+from abgeordnetenwatch_python.questions_answers.load_qa import load_questions_answers
 
 
 class Politician(BaseModel):
@@ -15,8 +20,14 @@ class Politician(BaseModel):
     party: Optional[Party] = None
     residence: Optional[str] = None
 
-    async def load_questions_answers(self, verbose: bool = False, threads: int = 1) -> List[QuestionAnswerResult]:
-        return await load_questions_answers(self.abgeordnetenwatch_url, verbose=verbose, threads=threads)
+    async def load_questions_answers(
+            self, verbose: bool = False, threads: int = 1, cache_settings: Optional[CacheSettings] = None
+    ) -> QuestionsAnswers:
+        cache_settings = cache_settings or CacheSettings.default()
+
+        return await load_questions_answers(
+            self.abgeordnetenwatch_url, verbose=verbose, threads=threads, cache_settings=cache_settings
+        )
 
     def get_label(self) -> str:
         return '{} {}'.format(self.first_name, self.last_name)
@@ -66,6 +77,55 @@ def get_politician(
         id: Optional[int] = None, first_name: Optional[str] = None, last_name: Optional[str] = None,
         party: Optional[str] = None, residence: Optional[str] = None
 ) -> Politician:
+    """
+    Retrieve a single politician based on specified parameters. The function filters
+    politicians according to the provided criteria and ensures that exactly one
+    politician satisfies these conditions. If more or fewer politicians are found,
+    an assertion error will occur.
+
+    :param id: Optional. The unique identifier of the politician to retrieve.
+    :param first_name: Optional. The first name of the politician to retrieve.
+    :param last_name: Optional. The last name of the politician to retrieve.
+    :param party: Optional. The political party of the politician to retrieve.
+    :param residence: Optional. The residence location of the politician to
+        retrieve.
+    :return: The politician that matches the specified criteria.
+    """
     politicians = get_politicians(id, first_name, last_name, party, residence)
-    assert len(politicians) == 1, 'Expected 1 politician, but found {}'.format(len(politicians))
+    if len(politicians) != 1:
+        raise ValueError('Expected 1 politician, but found {}'.format(len(politicians)))
     return politicians[0]
+
+
+def get_default_filename(politician: Union[Politician, str], outdir: Path) -> Path:
+    """
+    Creates the default filename for a politician.
+    :param politician: The politician for which the filename should be created. Can also be the url of the politician.
+    :param outdir: The directory where the file should be located.
+    :return: A Path object with the filename.
+    """
+    if isinstance(politician, str):
+        u = [u for u in politician.split('/') if u][-1]
+        return outdir / f'{u}.json'
+    elif isinstance(politician, Politician):
+        return outdir / f'{politician.id:0>6}_{politician.first_name}_{politician.last_name}.json'
+    raise TypeError(f'Invalid type for politician: {type(politician)}')
+
+
+def normalize_for_url(text: str) -> str:
+    text = text.lower()
+
+    replacements = [
+        (' ', '-'),
+        ('ä', 'ae'),
+        ('ö', 'oe'),
+        ('ü', 'ue'),
+        ('ß', 'ss'),
+    ]
+    for old, new in replacements:
+        text = text.replace(old, new)
+
+    text = unicodedata.normalize('NFD', text)
+    text = text.encode('ascii', 'ignore').decode('ascii')
+
+    return text
