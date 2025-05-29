@@ -38,7 +38,7 @@ convert_qa data/json data/csv csv
 Dies wird eine Datei `data/txt/079137_Angela_Merkel.txt` erstellen (für alle Dateien in `data/json`).
 
 ### Parlament laden
-Um alle Fragen und Antworten von allen Politikern aus einem Parlament zu holen, können Sie folgendes tun:
+Um alle Fragen und Antworten von allen Politikern aus einem Parlament zu holen, können Sie Folgendes tun:
 ```sh
 # lade „bundestag“ mit 16 gleichzeitigen Anfragen
 load_parliament_qa bundestag -t 16

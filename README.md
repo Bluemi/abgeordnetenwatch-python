@@ -6,7 +6,7 @@ Small utility programs to use the [abgeordnetenwatch-api](https://www.abgeordnet
 
 ## Installation
 
-To use this script install [python3](https://www.python.org/) and [pip](https://packaging.python.org/en/latest/tutorials/installing-packages/).
+To use this script, install [python3](https://www.python.org/) and [pip](https://packaging.python.org/en/latest/tutorials/installing-packages/).
 
 Install requirements with
 ```sh
@@ -28,7 +28,7 @@ load_questions_answers --help
 This will create a file `data/json/079137_Angela_Merkel.json` with all questions and answers of the specified person.
 
 ### Converting to txt files
-To convert json files to txt do the following:
+To convert json files to txt, do the following:
 
 ```sh
 convert_qa data/json data/txt txt
@@ -40,7 +40,7 @@ convert_qa data/json data/csv csv
 This will create a file `data/txt/079137_Angela_Merkel.txt` (for all files in `data/json`).
 
 ### Load Parliament
-To fetch all questions and answers from all politicians from a parliament you can do the following:
+To fetch all questions and answers from all politicians from a parliament, you can do the following:
 ```sh
 # load "bundestag" using 16 requests simulaneously
 load_parliament_qa bundestag -t 16
