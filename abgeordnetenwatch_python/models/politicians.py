@@ -10,20 +10,13 @@ class Politician(BaseModel):
     id: int
     first_name: str
     last_name: str
+    api_url: str
+    abgeordnetenwatch_url: str
     party: Optional[Party] = None
     residence: Optional[str] = None
 
-    def get_api_url(self) -> str:
-        return 'https://www.abgeordnetenwatch.de/api/v2/politicians/{}'.format(self.id)
-
-    def get_url(self) -> str:
-        first_name = self.first_name.lower().replace(' ', '-')
-        last_name = self.last_name.lower().replace(' ', '-')
-        return 'https://www.abgeordnetenwatch.de/profile/{}-{}'.format(first_name, last_name)
-
     async def load_questions_answers(self, verbose: bool = False, threads: int = 1) -> List[QuestionAnswerResult]:
-        politician_url = self.get_url()
-        return await load_questions_answers(politician_url, verbose=verbose, threads=threads)
+        return await load_questions_answers(self.abgeordnetenwatch_url, verbose=verbose, threads=threads)
 
     def get_label(self) -> str:
         return '{} {}'.format(self.first_name, self.last_name)
