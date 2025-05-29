@@ -4,6 +4,8 @@ import sys
 from pathlib import Path
 from typing import List
 
+import aiohttp
+
 from abgeordnetenwatch_python.models import politicians
 from abgeordnetenwatch_python.models.politicians import get_default_filename
 from abgeordnetenwatch_python.models.politician_dossier import load_politician_dossier_with_cache_file
@@ -89,9 +91,10 @@ async def async_main():
         print(f'Downloading {politician.first_name} {politician.last_name} {politician.id}')
 
     filename = get_default_filename(politician, outdir)
-    await load_politician_dossier_with_cache_file(
-        politician, filename, sort_by=args.sort_by, verbose=verbose, threads=args.threads
-    )
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=args.threads)) as session:
+        await load_politician_dossier_with_cache_file(
+            politician, filename, session=session, sort_by=args.sort_by, verbose=verbose, threads=args.threads
+        )
 
     if verbose:
         print(f'Saved {str(politician)} to {filename}')

@@ -334,24 +334,23 @@ def get_batches(frames: List, batch_size: int) -> Iterable[List]:
         if index >= len(frames):
             break
 
-
 async def load_questions_answers(
-        politician_url: str, verbose: bool = False, threads: int = 1, cache_info: Optional[CacheInfo] = None,
+        politician_url: str, session: aiohttp.ClientSession, verbose: bool = False, threads: int = 1,
+        cache_info: Optional[CacheInfo] = None,
 ) -> QuestionsAnswers:
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=threads)) as session:
-        urls = await async_get_questions_answers_urls(
-            politician_url, session, cache_info=cache_info, verbose=verbose, threads=threads
-        )
+    urls = await async_get_questions_answers_urls(
+        politician_url, session, cache_info=cache_info, verbose=verbose, threads=threads
+    )
 
-        progress = None
-        if verbose:
-            progress = tqdm(total=len(urls), desc="loading questions")
-        results: List[QuestionAnswerResult] = []
-        for url_batch in get_batches(urls, threads):
-            tasks = [download_question_answer(url, session, cache_info) for url in url_batch]
-            for coro in asyncio.as_completed(tasks):
-                results.append(await coro)
-                if progress is not None:
-                    progress.update(1)
+    progress = None
+    if verbose:
+        progress = tqdm(total=len(urls), desc="loading questions")
+    results: List[QuestionAnswerResult] = []
+    for url_batch in get_batches(urls, threads):
+        tasks = [download_question_answer(url, session, cache_info) for url in url_batch]
+        for coro in asyncio.as_completed(tasks):
+            results.append(await coro)
+            if progress is not None:
+                progress.update(1)
 
     return QuestionsAnswers(questions_answers=results)

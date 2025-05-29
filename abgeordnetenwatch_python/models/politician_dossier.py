@@ -3,6 +3,7 @@ import warnings
 from pathlib import Path
 from typing import Optional, List
 
+import aiohttp
 from pydantic import BaseModel, ValidationError
 
 from abgeordnetenwatch_python.cache import CacheInfo
@@ -42,7 +43,8 @@ class PoliticianDossier(BaseModel):
 
 
 async def load_politician_dossier(
-        politician: Politician, cache: Optional[PoliticianDossier] = None, verbose: bool = True, threads: int = 1
+        politician: Politician, session: aiohttp.ClientSession, cache: Optional[PoliticianDossier] = None,
+        verbose: bool = True, threads: int = 1
 ) -> PoliticianDossier:
     """
     Loads all questions and answers for a politician together with the current candidacy mandate.
@@ -70,18 +72,19 @@ async def load_politician_dossier(
                 (politician.statistic_questions_answered or 0) - (cache.politician.statistic_questions_answered or 0)
 
     questions_answers = await load_questions_answers(
-        politician.abgeordnetenwatch_url, verbose=verbose, threads=threads, cache_info=cache_info
+        politician.abgeordnetenwatch_url, session=session, verbose=verbose, threads=threads, cache_info=cache_info
     )
 
     return PoliticianDossier(politician=politician, mandate_ids=mandate_ids, questions_answers=questions_answers)
 
 
 async def load_politician_dossier_with_cache_file(
-        politician: Politician, filename: Path, sort_by: Optional[str] = None, verbose: bool = False, threads: int = 1
+        politician: Politician, filename: Path, session: aiohttp.ClientSession, sort_by: Optional[str] = None,
+        verbose: bool = False, threads: int = 1,
 ):
     cache = PoliticianDossier.from_file(filename)
     politician_dossier = await load_politician_dossier(
-        politician, verbose=verbose, threads=threads, cache=cache
+        politician, session=session, verbose=verbose, threads=threads, cache=cache
     )
     politician_dossier.sort_questions_answers(sort_by)
     politician_dossier.dump_to_file(filename)

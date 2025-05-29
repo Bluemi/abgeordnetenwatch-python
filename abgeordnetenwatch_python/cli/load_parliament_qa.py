@@ -2,6 +2,8 @@ import argparse
 import asyncio
 from pathlib import Path
 
+import aiohttp
+
 from abgeordnetenwatch_python.models.parliament import get_parliament
 from abgeordnetenwatch_python.models.politicians import get_politician, get_default_filename
 from abgeordnetenwatch_python.models.politician_dossier import load_politician_dossier_with_cache_file
@@ -44,19 +46,20 @@ async def async_main():
     politician_ids = parliament.get_politician_ids(verbose=verbose)
     print('found {} politicians'.format(len(politician_ids)))
 
-    for index, politician_id in enumerate(politician_ids):
-        try:
-            politician = get_politician(id=politician_id)
-            if verbose:
-                print(f'loading questions [{index + 1}/{len(politician_ids)}]: {politician.get_full_name()}')
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=args.threads)) as session:
+        for index, politician_id in enumerate(politician_ids):
+            try:
+                politician = get_politician(id=politician_id)
+                if verbose:
+                    print(f'loading questions [{index + 1}/{len(politician_ids)}]: {politician.get_full_name()}')
 
-            filename = get_default_filename(politician, outdir)
-            await load_politician_dossier_with_cache_file(
-                politician, filename, threads=args.threads, verbose=verbose, sort_by=args.sort_by
-            )
-        except Exception as e:
-            print('failed to load politician {}'.format(politician_id))
-            print(e)
+                filename = get_default_filename(politician, outdir)
+                await load_politician_dossier_with_cache_file(
+                    politician, filename, session=session, threads=args.threads, verbose=verbose, sort_by=args.sort_by
+                )
+            except Exception as e:
+                print('failed to load politician {}'.format(politician_id))
+                print(e)
 
 
 def main():
