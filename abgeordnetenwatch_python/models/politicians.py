@@ -24,7 +24,8 @@ class Politician(BaseModel):
     residence: Optional[str] = None
 
     async def load_questions_answers(
-            self, session: aiohttp.ClientSession, verbose: bool = False, threads: int = 1, cache_info: Optional[CacheInfo] = None
+            self, session: aiohttp.ClientSession, verbose: bool = False, threads: int = 1,
+            cache_info: Optional[CacheInfo] = None
     ) -> QuestionsAnswers:
         return await load_questions_answers(
             self.abgeordnetenwatch_url, session=session, verbose=verbose, threads=threads, cache_info=cache_info
