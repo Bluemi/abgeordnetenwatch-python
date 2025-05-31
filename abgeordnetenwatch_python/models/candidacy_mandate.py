@@ -1,7 +1,6 @@
 from typing import List, Optional, Dict, Any
 
 import aiohttp
-import requests
 from pydantic import BaseModel
 
 from abgeordnetenwatch_python.models.parliament_period import ParliamentPeriod, get_parliament_period
