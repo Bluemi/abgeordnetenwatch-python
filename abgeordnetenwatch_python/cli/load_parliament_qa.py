@@ -58,7 +58,7 @@ async def async_main():
 
         workers = [
             asyncio.create_task(worker(session, queue, overall_progress, outdir, args.sort_by, verbose, args.threads))
-            for i in range(args.threads)
+            for _ in range(args.threads)
         ]
 
         await queue.join()

@@ -1,17 +1,19 @@
 import csv
 import datetime
+import functools
 import html.parser
 import json
 import asyncio
 import re
 import warnings
 from pathlib import Path
-from typing import List, Optional, Tuple, Iterable, Set
+from typing import List, Optional, Tuple, Iterable, Set, Dict, Any
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 from tqdm import tqdm
+from tqdm.asyncio import tqdm_asyncio
 
 from abgeordnetenwatch_python.models.questions_answers import QuestionAnswerResult, str_to_date, QuestionsAnswers, \
     TqdmArgs
@@ -351,17 +353,13 @@ async def load_questions_answers(
         politician_url, session, cache_info=cache_info, verbose=verbose, threads=url_threads, tqdm_args=tqdm_args
     )
 
-    progress = None
+    gather_func = asyncio.gather
     if verbose:
         if tqdm_args is None:
-            tqdm_args = {'desc': "loading questions"}
-        progress = tqdm(total=len(urls), **tqdm_args)
-    results: List[QuestionAnswerResult] = []
-    for url_batch in get_batches(urls, threads):  # TODO: remove batching
-        tasks = [download_question_answer(url, session, cache_info) for url in url_batch]
-        for coro in asyncio.as_completed(tasks):
-            results.append(await coro)
-            if progress is not None:
-                progress.update(1)
+            tqdm_args: Dict[str, Any] = {'desc': "loading questions"}
+        tqdm_args['total'] = len(urls)
+        gather_func = functools.partial(tqdm_asyncio.gather, **tqdm_args)
+    tasks = [download_question_answer(url, session, cache_info) for url in urls]
+    results: List[QuestionAnswerResult] = await gather_func(*tasks)
 
     return QuestionsAnswers(questions_answers=results)
