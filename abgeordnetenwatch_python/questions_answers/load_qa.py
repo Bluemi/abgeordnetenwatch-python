@@ -7,7 +7,7 @@ import asyncio
 import re
 import warnings
 from pathlib import Path
-from typing import List, Optional, Tuple, Iterable, Set, Dict, Any
+from typing import List, Optional, Tuple, Iterable, Set
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -16,7 +16,7 @@ from tqdm import tqdm
 from tqdm.asyncio import tqdm_asyncio
 
 from abgeordnetenwatch_python.models.questions_answers import QuestionAnswerResult, str_to_date, QuestionsAnswers, \
-    TqdmArgs
+    TqdmArgs, normalize_tqdm_args
 from abgeordnetenwatch_python.cache import CacheInfo
 
 
@@ -264,7 +264,8 @@ def get_questions_answers_url(url: str, page: Optional[int] = None):
 
 async def async_get_questions_answers_urls(
         url: str, session: aiohttp.ClientSession, cache_info: Optional[CacheInfo] = None, verbose: bool = False,
-        threads: int = 5, tqdm_args: Optional[TqdmArgs] = None
+        threads: int = 5, tqdm_args: Optional[TqdmArgs] = None,
+        politician_name: Optional[str] = None,
 ) -> List[str]:
     sem = asyncio.Semaphore(threads)
     base_url = 'https://www.abgeordnetenwatch.de'
@@ -288,10 +289,7 @@ async def async_get_questions_answers_urls(
     pages = 0
     pbar = None
     if verbose:
-        if tqdm_args is None:
-            tqdm_args = {}
-        if 'desc' not in tqdm_args:
-            tqdm_args['desc'] = "loading questions"
+        tqdm_args = normalize_tqdm_args(tqdm_args, f'collecting {politician_name or 'questions'}')
         pbar = tqdm(total=total, **tqdm_args)
         pbar.update(len(all_urls))
     running = True
@@ -344,21 +342,21 @@ def get_batches(frames: List, batch_size: int) -> Iterable[List]:
 
 async def load_questions_answers(
         politician_url: str, session: aiohttp.ClientSession, verbose: bool = False, threads: int = 1,
-        url_threads: int = -1, cache_info: Optional[CacheInfo] = None, tqdm_args: TqdmArgs = None
+        url_threads: int = -1, cache_info: Optional[CacheInfo] = None, tqdm_args: TqdmArgs = None,
+        politician_name: Optional[str] = None,
 ) -> QuestionsAnswers:
     if url_threads == -1:
         url_threads = threads
 
     urls = await async_get_questions_answers_urls(
-        politician_url, session, cache_info=cache_info, verbose=verbose, threads=url_threads, tqdm_args=tqdm_args
+        politician_url, session, cache_info=cache_info, verbose=verbose, threads=url_threads, tqdm_args=tqdm_args,
+        politician_name=politician_name
     )
 
     gather_func = asyncio.gather
     if verbose:
-        if tqdm_args is None:
-            tqdm_args: Dict[str, Any] = {'desc': "loading questions"}
-        tqdm_args['total'] = len(urls)
-        gather_func = functools.partial(tqdm_asyncio.gather, **tqdm_args)
+        tqdm_args = normalize_tqdm_args(tqdm_args, f"loading {politician_name or 'questions'}")
+        gather_func = functools.partial(tqdm_asyncio.gather, total=len(urls), **tqdm_args)
     tasks = [download_question_answer(url, session, cache_info) for url in urls]
     results: List[QuestionAnswerResult] = await gather_func(*tasks)
 

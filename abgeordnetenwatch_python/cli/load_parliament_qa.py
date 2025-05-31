@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 from pathlib import Path
+from typing import Optional
 
 import aiohttp
 from tqdm import tqdm
@@ -44,14 +45,18 @@ async def async_main():
 
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=args.threads)) as session:
         # load parliament
-        print('loading politicians to scan:')
+        if verbose:
+            print('loading politicians to scan:')
         parliament = await get_parliament(session, label=args.parliament)
         politician_ids = await parliament.get_politician_ids(session, verbose=verbose)
-        print('found {} politicians'.format(len(politician_ids)))
+        if verbose:
+            print('found {} politicians'.format(len(politician_ids)))
 
         # load politicians
         queue = asyncio.Queue()
-        overall_progress = tqdm(desc='Progress', total=len(politician_ids))
+        overall_progress = None
+        if verbose:
+            overall_progress = tqdm(desc='Progress', total=len(politician_ids))
 
         for p_id in politician_ids:
             await queue.put(p_id)
@@ -65,7 +70,9 @@ async def async_main():
         for w in workers:
             w.cancel()
         worker_errors = await asyncio.gather(*workers, return_exceptions=True)
-        overall_progress.close()
+
+        if overall_progress is not None:
+            overall_progress.close()
 
         errors = [e for worker_error in worker_errors for e in worker_error]
 
@@ -75,7 +82,7 @@ async def async_main():
 
 
 async def worker(
-        session: aiohttp.ClientSession, queue: asyncio.Queue, overall_progress: tqdm, outdir: Path,
+        session: aiohttp.ClientSession, queue: asyncio.Queue, overall_progress: Optional[tqdm], outdir: Path,
         sort_by: str, verbose: bool = False, threads: int = 1
 ) -> list:
     errors = []
@@ -86,10 +93,13 @@ async def worker(
             break
 
         try:
-            obj = tqdm(desc="preparing...", bar_format='{desc}', leave=None)
-            obj.refresh()
+            tqdm_obj = None
+            if verbose:
+                tqdm_obj = tqdm(desc=f"preparing... {politician_id}", bar_format='{desc}', leave=None)
+                tqdm_obj.refresh()
             politician = await get_politician(session, id=politician_id)
-            obj.close()
+            if verbose:
+                tqdm_obj.close()
 
             filename = get_default_filename(politician, outdir)
             tqdm_args = {
@@ -100,7 +110,9 @@ async def worker(
                 tqdm_args=tqdm_args
             )
 
-            overall_progress.update(1)
+            if overall_progress is not None:
+                overall_progress.update(1)
+
             queue.task_done()
         except Exception as e:
             print('failed to load politician {}'.format(politician_id))

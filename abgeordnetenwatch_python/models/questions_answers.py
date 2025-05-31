@@ -60,3 +60,13 @@ def date_to_str(date: Optional[datetime.date]) -> str:
 
 
 type TqdmArgs = Optional[Dict[str, Any]]
+
+
+def normalize_tqdm_args(tqdm_args: TqdmArgs, default_desc: Optional[str] = None) -> TqdmArgs:
+    if tqdm_args is None:
+        tqdm_args = {}
+    else:
+        tqdm_args = tqdm_args.copy()
+    if 'desc' not in tqdm_args:
+        tqdm_args['desc'] = default_desc
+    return tqdm_args

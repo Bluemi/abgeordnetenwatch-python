@@ -5,6 +5,7 @@ from typing import Optional, List
 
 import aiohttp
 from pydantic import BaseModel, ValidationError
+from tqdm.asyncio import tqdm
 
 from abgeordnetenwatch_python.cache import CacheInfo
 from abgeordnetenwatch_python.questions_answers.load_qa import load_questions_answers, sort_questions_answers
@@ -58,6 +59,10 @@ async def load_politician_dossier(
                         If -1, the argument "threads" is used.
     :param tqdm_args: Additional arguments to pass to tqdm.
     """
+    tqdm_obj = None
+    if verbose:
+        tqdm_obj = tqdm(desc=f"preparing {politician.get_full_name()}", bar_format='{desc}', leave=None)
+        tqdm_obj.refresh()
     candidacy_mandates = await get_candidacy_mandates(session, politician_id=politician.id)
 
     mandate_ids = [cm.id for cm in candidacy_mandates]
@@ -75,9 +80,12 @@ async def load_politician_dossier(
             cache_info.num_answers_missing =\
                 (politician.statistic_questions_answered or 0) - (cache.politician.statistic_questions_answered or 0)
 
+    if verbose:
+        tqdm_obj.close()
+
     questions_answers = await load_questions_answers(
         politician.abgeordnetenwatch_url, session=session, verbose=verbose, threads=threads, url_threads=url_threads,
-        cache_info=cache_info, tqdm_args=tqdm_args
+        cache_info=cache_info, tqdm_args=tqdm_args, politician_name=politician.get_full_name()
     )
 
     return PoliticianDossier(politician=politician, mandate_ids=mandate_ids, questions_answers=questions_answers)

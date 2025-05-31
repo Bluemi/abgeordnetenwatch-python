@@ -26,7 +26,8 @@ class Politician(BaseModel):
             cache_info: Optional[CacheInfo] = None
     ) -> QuestionsAnswers:
         return await load_questions_answers(
-            self.abgeordnetenwatch_url, session=session, verbose=verbose, threads=threads, cache_info=cache_info
+            self.abgeordnetenwatch_url, session=session, verbose=verbose, threads=threads, cache_info=cache_info,
+            politician_name=self.get_full_name()
         )
 
     def get_label(self) -> str:
