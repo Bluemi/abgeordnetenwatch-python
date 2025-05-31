@@ -1,7 +1,9 @@
+import asyncio
 from typing import List, Optional
 
 import aiohttp
 from pydantic import BaseModel
+from tqdm.asyncio import tqdm_asyncio
 
 
 class Parliament(BaseModel):
@@ -15,21 +17,21 @@ class Parliament(BaseModel):
         from abgeordnetenwatch_python.models.parliament_period import get_parliament_periods
         from abgeordnetenwatch_python.models.candidacy_mandate import get_candidacy_mandates
 
-        politician_ids = set()
-
         parliament_periods = await get_parliament_periods(session, parliament_id=self.id, limit=1000)
 
         # skip election periods
         parliament_periods = [pp for pp in parliament_periods if pp.is_legislature()]
 
-        for index, pp in enumerate(parliament_periods):
-            if verbose:
-                print('loading parliament period [{}/{}]: {}'.format(index+1, len(parliament_periods), pp.label),
-                      end='', flush=True)
-            candidacy_mandates = await get_candidacy_mandates(session, parliament_period_id=pp.id, limit=1000)
-            if verbose:
-                print(' (found {} politicians)'.format(len(candidacy_mandates)), flush=True)
+        tasks = [get_candidacy_mandates(session, parliament_period_id=pp.id, limit=1000) for pp in parliament_periods]
+        if verbose:
+            candidacy_mandates_per_pp = await tqdm_asyncio.gather(*tasks, desc='Loading mandates')
+        else:
+            candidacy_mandates_per_pp = await asyncio.gather(*tasks)
+
+        politician_ids = set()
+        for candidacy_mandates in candidacy_mandates_per_pp:
             politician_ids.update(cm.politician_id for cm in candidacy_mandates)
+
         return sorted(politician_ids)
 
     def __repr__(self) -> str:

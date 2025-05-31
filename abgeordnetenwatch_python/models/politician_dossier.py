@@ -10,7 +10,7 @@ from abgeordnetenwatch_python.cache import CacheInfo
 from abgeordnetenwatch_python.questions_answers.load_qa import load_questions_answers, sort_questions_answers
 from abgeordnetenwatch_python.models.candidacy_mandate import get_candidacy_mandates
 from abgeordnetenwatch_python.models.politicians import Politician
-from abgeordnetenwatch_python.models.questions_answers import QuestionsAnswers
+from abgeordnetenwatch_python.models.questions_answers import QuestionsAnswers, TqdmArgs
 
 
 class PoliticianDossier(BaseModel):
@@ -44,7 +44,7 @@ class PoliticianDossier(BaseModel):
 
 async def load_politician_dossier(
         politician: Politician, session: aiohttp.ClientSession, cache: Optional[PoliticianDossier] = None,
-        verbose: bool = True, threads: int = 1
+        verbose: bool = True, threads: int = 1, url_threads: int = -1, tqdm_args: TqdmArgs = None,
 ) -> PoliticianDossier:
     """
     Loads all questions and answers for a politician together with the current candidacy mandate.
@@ -54,6 +54,9 @@ async def load_politician_dossier(
     :param cache: An optional cache to use for caching the dossier. If None, no caching will be used.
     :param verbose: Output progress information.
     :param threads: The number of threads to use for loading the questions and answers.
+    :param url_threads: The number of threads to use for loading individual question and answer pages.
+                        If -1, the argument "threads" is used.
+    :param tqdm_args: Additional arguments to pass to tqdm.
     """
     candidacy_mandates = await get_candidacy_mandates(session, politician_id=politician.id)
 
@@ -73,7 +76,8 @@ async def load_politician_dossier(
                 (politician.statistic_questions_answered or 0) - (cache.politician.statistic_questions_answered or 0)
 
     questions_answers = await load_questions_answers(
-        politician.abgeordnetenwatch_url, session=session, verbose=verbose, threads=threads, cache_info=cache_info
+        politician.abgeordnetenwatch_url, session=session, verbose=verbose, threads=threads, url_threads=url_threads,
+        cache_info=cache_info, tqdm_args=tqdm_args
     )
 
     return PoliticianDossier(politician=politician, mandate_ids=mandate_ids, questions_answers=questions_answers)
@@ -81,11 +85,12 @@ async def load_politician_dossier(
 
 async def load_politician_dossier_with_cache_file(
         politician: Politician, filename: Path, session: aiohttp.ClientSession, sort_by: Optional[str] = None,
-        verbose: bool = False, threads: int = 1,
+        verbose: bool = False, threads: int = 1, url_threads: int = -1, tqdm_args: TqdmArgs = None
 ):
     cache = PoliticianDossier.from_file(filename)
     politician_dossier = await load_politician_dossier(
-        politician, session=session, verbose=verbose, threads=threads, cache=cache
+        politician, session=session, verbose=verbose, threads=threads, url_threads=url_threads, cache=cache,
+        tqdm_args=tqdm_args
     )
     politician_dossier.sort_questions_answers(sort_by)
     politician_dossier.dump_to_file(filename)

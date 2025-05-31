@@ -3,6 +3,7 @@ import asyncio
 from pathlib import Path
 
 import aiohttp
+from tqdm import tqdm
 
 from abgeordnetenwatch_python.models.parliament import get_parliament
 from abgeordnetenwatch_python.models.politicians import get_politician, get_default_filename
@@ -49,19 +50,54 @@ async def async_main():
         print('found {} politicians'.format(len(politician_ids)))
 
         # load politicians
-        for index, politician_id in enumerate(politician_ids):
-            try:
-                politician = await get_politician(session, id=politician_id)
-                if verbose:
-                    print(f'loading questions [{index + 1}/{len(politician_ids)}]: {politician.get_full_name()}')
+        queue = asyncio.Queue()
+        overall_progress = tqdm(desc='Progress', total=len(politician_ids))
 
-                filename = get_default_filename(politician, outdir)
-                await load_politician_dossier_with_cache_file(
-                    politician, filename, session=session, threads=args.threads, verbose=verbose, sort_by=args.sort_by
-                )
-            except Exception as e:
-                print('failed to load politician {}'.format(politician_id))
-                print(e)
+        for p_id in politician_ids:
+            await queue.put(p_id)
+
+        workers = [
+            asyncio.create_task(worker(session, queue, overall_progress, outdir, args.sort_by, verbose, args.threads))
+            for i in range(args.threads)
+        ]
+
+        await queue.join()
+        for w in workers:
+            w.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
+        overall_progress.close()
+
+
+async def worker(
+        session: aiohttp.ClientSession, queue: asyncio.Queue, overall_progress: tqdm, outdir: Path,
+        sort_by: str, verbose: bool = False, threads: int = 1
+):
+    while True:
+        try:
+            politician_id = await queue.get()
+        except asyncio.CancelledError:
+            break
+
+        try:
+            obj = tqdm(desc="preparing...", bar_format='{desc}', leave=None)
+            obj.refresh()
+            politician = await get_politician(session, id=politician_id)
+            obj.close()
+
+            filename = get_default_filename(politician, outdir)
+            tqdm_args = {
+                'leave': False, 'colour': '#777777'
+            }
+            await load_politician_dossier_with_cache_file(
+                politician, filename, session=session, threads=threads, url_threads=1, verbose=verbose, sort_by=sort_by,
+                tqdm_args=tqdm_args
+            )
+
+            overall_progress.update(1)
+            queue.task_done()
+        except Exception as e:
+            print('failed to load politician {}'.format(politician_id))
+            print(e)
 
 
 def main():

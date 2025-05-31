@@ -13,7 +13,8 @@ from bs4 import BeautifulSoup
 
 from tqdm import tqdm
 
-from abgeordnetenwatch_python.models.questions_answers import QuestionAnswerResult, str_to_date, QuestionsAnswers
+from abgeordnetenwatch_python.models.questions_answers import QuestionAnswerResult, str_to_date, QuestionsAnswers, \
+    TqdmArgs
 from abgeordnetenwatch_python.cache import CacheInfo
 
 
@@ -261,7 +262,7 @@ def get_questions_answers_url(url: str, page: Optional[int] = None):
 
 async def async_get_questions_answers_urls(
         url: str, session: aiohttp.ClientSession, cache_info: Optional[CacheInfo] = None, verbose: bool = False,
-        threads: int = 5,
+        threads: int = 5, tqdm_args: Optional[TqdmArgs] = None
 ) -> List[str]:
     sem = asyncio.Semaphore(threads)
     base_url = 'https://www.abgeordnetenwatch.de'
@@ -285,7 +286,11 @@ async def async_get_questions_answers_urls(
     pages = 0
     pbar = None
     if verbose:
-        pbar = tqdm(desc="collecting questions", total=total)
+        if tqdm_args is None:
+            tqdm_args = {}
+        if 'desc' not in tqdm_args:
+            tqdm_args['desc'] = "loading questions"
+        pbar = tqdm(total=total, **tqdm_args)
         pbar.update(len(all_urls))
     running = True
     while running:
@@ -334,19 +339,25 @@ def get_batches(frames: List, batch_size: int) -> Iterable[List]:
         if index >= len(frames):
             break
 
+
 async def load_questions_answers(
         politician_url: str, session: aiohttp.ClientSession, verbose: bool = False, threads: int = 1,
-        cache_info: Optional[CacheInfo] = None,
+        url_threads: int = -1, cache_info: Optional[CacheInfo] = None, tqdm_args: TqdmArgs = None
 ) -> QuestionsAnswers:
+    if url_threads == -1:
+        url_threads = threads
+
     urls = await async_get_questions_answers_urls(
-        politician_url, session, cache_info=cache_info, verbose=verbose, threads=threads
+        politician_url, session, cache_info=cache_info, verbose=verbose, threads=url_threads, tqdm_args=tqdm_args
     )
 
     progress = None
     if verbose:
-        progress = tqdm(total=len(urls), desc="loading questions")
+        if tqdm_args is None:
+            tqdm_args = {'desc': "loading questions"}
+        progress = tqdm(total=len(urls), **tqdm_args)
     results: List[QuestionAnswerResult] = []
-    for url_batch in get_batches(urls, threads):
+    for url_batch in get_batches(urls, threads):  # TODO: remove batching
         tasks = [download_question_answer(url, session, cache_info) for url in url_batch]
         for coro in asyncio.as_completed(tasks):
             results.append(await coro)

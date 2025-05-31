@@ -57,3 +57,6 @@ def str_to_date(date_text: str) -> datetime.date:
 
 def date_to_str(date: Optional[datetime.date]) -> str:
     return date.strftime('%d.%m.%Y') if date is not None else 'XX.XX.XXXX'
+
+
+type TqdmArgs = Optional[Dict[str, Any]]
