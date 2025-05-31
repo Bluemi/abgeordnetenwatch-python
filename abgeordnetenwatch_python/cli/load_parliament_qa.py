@@ -43,7 +43,8 @@ async def async_main():
     outdir: Path = args.outdir / args.parliament.lower()
     outdir.mkdir(exist_ok=True, parents=True)
 
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=args.threads)) as session:
+    timeout = aiohttp.ClientTimeout(total=60 * 60 * 24 * 2)  # run 2 days max
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=args.threads), timeout=timeout) as session:
         # load parliament
         if verbose:
             print('loading politicians to scan:')
