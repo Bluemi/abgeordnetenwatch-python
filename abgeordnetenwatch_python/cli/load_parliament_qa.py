@@ -64,14 +64,21 @@ async def async_main():
         await queue.join()
         for w in workers:
             w.cancel()
-        await asyncio.gather(*workers, return_exceptions=True)
+        worker_errors = await asyncio.gather(*workers, return_exceptions=True)
         overall_progress.close()
+
+        errors = [e for worker_error in worker_errors for e in worker_error]
+
+        print(f'{len(errors)} errors occurred during loading')
+        for e in errors:
+            print(e)
 
 
 async def worker(
         session: aiohttp.ClientSession, queue: asyncio.Queue, overall_progress: tqdm, outdir: Path,
         sort_by: str, verbose: bool = False, threads: int = 1
-):
+) -> list:
+    errors = []
     while True:
         try:
             politician_id = await queue.get()
@@ -98,6 +105,8 @@ async def worker(
         except Exception as e:
             print('failed to load politician {}'.format(politician_id))
             print(e)
+            errors.append(e)
+    return errors
 
 
 def main():
