@@ -95,7 +95,7 @@ async def worker(
         try:
             tqdm_obj = None
             if verbose:
-                tqdm_obj = tqdm(desc=f"preparing... {politician_id}", bar_format='{desc}', leave=None)
+                tqdm_obj = tqdm(desc=f"preparing {politician_id}", bar_format='{desc}', leave=None)
                 tqdm_obj.refresh()
             politician = await get_politician(session, id=politician_id)
             if verbose:
