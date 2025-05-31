@@ -41,15 +41,17 @@ async def async_main():
     outdir: Path = args.outdir / args.parliament.lower()
     outdir.mkdir(exist_ok=True, parents=True)
 
-    print('loading politicians to scan:')
-    parliament = get_parliament(label=args.parliament)
-    politician_ids = parliament.get_politician_ids(verbose=verbose)
-    print('found {} politicians'.format(len(politician_ids)))
-
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=args.threads)) as session:
+        # load parliament
+        print('loading politicians to scan:')
+        parliament = await get_parliament(session, label=args.parliament)
+        politician_ids = await parliament.get_politician_ids(session, verbose=verbose)
+        print('found {} politicians'.format(len(politician_ids)))
+
+        # load politicians
         for index, politician_id in enumerate(politician_ids):
             try:
-                politician = get_politician(id=politician_id)
+                politician = await get_politician(session, id=politician_id)
                 if verbose:
                     print(f'loading questions [{index + 1}/{len(politician_ids)}]: {politician.get_full_name()}')
 

@@ -78,20 +78,20 @@ async def async_main():
         print('Please provide --id --firstname or --lastname')
         sys.exit(1)
 
-    politician_search_result = politicians.get_politicians(**filter_args)
-    if len(politician_search_result) == 0:
-        print('no politician found with the given arguments')
-        return
-    elif len(politician_search_result) == 1:
-        politician = politician_search_result[0]
-    else:
-        politician = choose_from_list(politician_search_result)
-
-    if verbose:
-        print(f'Downloading {politician.first_name} {politician.last_name} {politician.id}')
-
-    filename = get_default_filename(politician, outdir)
     async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=args.threads)) as session:
+        politician_search_result = await politicians.get_politicians(session=session, **filter_args)
+        if len(politician_search_result) == 0:
+            print('no politician found with the given arguments')
+            return
+        elif len(politician_search_result) == 1:
+            politician = politician_search_result[0]
+        else:
+            politician = choose_from_list(politician_search_result)
+
+        if verbose:
+            print(f'Downloading {politician.first_name} {politician.last_name} {politician.id}')
+
+        filename = get_default_filename(politician, outdir)
         await load_politician_dossier_with_cache_file(
             politician, filename, session=session, sort_by=args.sort_by, verbose=verbose, threads=args.threads
         )

@@ -4,8 +4,6 @@ from typing import List, Optional, Union
 import aiohttp
 from pydantic import BaseModel
 
-import requests
-
 from abgeordnetenwatch_python.models.party import Party
 from abgeordnetenwatch_python.models.questions_answers import QuestionsAnswers
 from abgeordnetenwatch_python.questions_answers.load_qa import load_questions_answers
@@ -48,13 +46,14 @@ class Politician(BaseModel):
         return '{} {}'.format(self.first_name, self.last_name)
 
 
-def get_politicians(
-        id: Optional[int] = None, first_name: Optional[str] = None, last_name: Optional[str] = None,
-        party: Optional[str] = None, residence: Optional[str] = None
+async def get_politicians(
+        session: aiohttp.ClientSession, id: Optional[int] = None, first_name: Optional[str] = None,
+        last_name: Optional[str] = None, party: Optional[str] = None, residence: Optional[str] = None
 ) -> List[Politician]:
     """
     Calls the abgeordnetenwatch API to retrieve all politicians matching the given parameters.
 
+    :param session: aiohttp session to use for making the request.
     :param id: Identifier or list of identifiers to use for filtering.
     :param first_name: First name or list of first names to use for filtering.
     :param last_name: Last name or list of last names to use for filtering.
@@ -73,14 +72,15 @@ def get_politicians(
         params['party'] = party
     if residence is not None:
         params['residence'] = residence
-    r = requests.get('https://www.abgeordnetenwatch.de/api/v2/politicians', params=params)
-    r.raise_for_status()
-    return [Politician.model_validate(pol_data) for pol_data in r.json()['data']]
+    url = 'https://www.abgeordnetenwatch.de/api/v2/politicians'
+    async with session.get(url, raise_for_status=True, params=params) as r:
+        data = await r.json()
+        return [Politician.model_validate(pol_data) for pol_data in data['data']]
 
 
-def get_politician(
-        id: Optional[int] = None, first_name: Optional[str] = None, last_name: Optional[str] = None,
-        party: Optional[str] = None, residence: Optional[str] = None
+async def get_politician(
+        session: aiohttp.ClientSession, id: Optional[int] = None, first_name: Optional[str] = None,
+        last_name: Optional[str] = None, party: Optional[str] = None, residence: Optional[str] = None
 ) -> Politician:
     """
     Retrieve a single politician based on specified parameters. The function filters
@@ -88,6 +88,7 @@ def get_politician(
     politician satisfies these conditions. If more or fewer politicians are found,
     an assertion error will occur.
 
+    :param session: aiohttp session to use for making the request.
     :param id: Optional. The unique identifier of the politician to retrieve.
     :param first_name: Optional. The first name of the politician to retrieve.
     :param last_name: Optional. The last name of the politician to retrieve.
@@ -96,7 +97,7 @@ def get_politician(
         retrieve.
     :return: The politician that matches the specified criteria.
     """
-    politicians = get_politicians(id, first_name, last_name, party, residence)
+    politicians = await get_politicians(session, id, first_name, last_name, party, residence)
     if len(politicians) != 1:
         raise ValueError('Expected 1 politician, but found {}'.format(len(politicians)))
     return politicians[0]

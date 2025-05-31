@@ -50,11 +50,12 @@ async def load_politician_dossier(
     Loads all questions and answers for a politician together with the current candidacy mandate.
 
     :param politician: The politician for which to load the dossier.
+    :param session: The aiohttp session to use for making the request.
     :param cache: An optional cache to use for caching the dossier. If None, no caching will be used.
     :param verbose: Output progress information.
     :param threads: The number of threads to use for loading the questions and answers.
     """
-    candidacy_mandates = get_candidacy_mandates(politician_id=politician.id)
+    candidacy_mandates = await get_candidacy_mandates(session, politician_id=politician.id)
 
     mandate_ids = [cm.id for cm in candidacy_mandates]
 
