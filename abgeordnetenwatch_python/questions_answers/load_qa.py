@@ -142,9 +142,10 @@ def questions_answers_to_json(filename: Path, questions_answers: QuestionsAnswer
 def questions_answers_to_txt(filename: Path, questions_answers: QuestionsAnswers):
     with open(filename, 'w') as f:
         for qa in questions_answers.questions_answers:
+            question = qa.question or 'Frage konnte nicht runtergeladen werden'
             f.write('\n' + '-' * 50 + '\n\n')
             f.write('Frage vom {}:\n'.format(qa.get_question_date()))
-            f.write(qa.question + '\n')
+            f.write(question + '\n')
             if qa.question_addition:
                 f.write('\nErläuterungen:\n')
                 f.write(qa.question_addition + '\n')

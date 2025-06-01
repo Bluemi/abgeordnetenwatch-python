@@ -50,8 +50,7 @@ def main():
         output_file.parent.mkdir(exist_ok=True, parents=True)
 
         politician_dossier = PoliticianDossier.from_file(input_file)
-        questions_answers = politician_dossier.questions_answers
-        save_answers_to_format(questions_answers, output_file, out_format)
+        save_answers_to_format(politician_dossier.questions_answers, output_file, out_format)
 
 
 if __name__ == '__main__':
