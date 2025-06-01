@@ -17,7 +17,12 @@ class CacheInfo(BaseModel):
         return self.lookup.get(url)
 
     def should_cache(self, cache_qa: Optional[QuestionAnswerResult]) -> bool:
+        # if we don't have something to cache, we don't do it
         if cache_qa is None:
+            return False
+
+        # never cache, if the question is missing
+        if cache_qa.question is None:
             return False
 
         # always cache if the answer is given
