@@ -4,16 +4,15 @@ Kleine Programme zur Nutzung der [abgeordnetenwatch-api](https://www.abgeordnete
 
 ## Installation
 
-Um dieses Skript zu verwenden, installieren Sie [python3](https://www.python.org/) und [pip](https://packaging.python.org/en/latest/tutorials/installing-packages/).
+Vorher [python3](https://www.python.org/) und [pip](https://packaging.python.org/en/latest/tutorials/installing-packages/) installieren.
 
-Installieren Sie die Anforderungen mit
 ```sh
-pip install .
+pip install abgeordnetenwatch-python
 ```
 
 ## Verwendung
 
-Sie können alle Fragen und Antworten eines Politikers mit dem folgenden Skript herunterladen:
+Alle Fragen und Antworten eines Politikers mit dem folgenden Skript herunterladen:
 
 ```sh
 # -v für ausführliche Ausgabe
@@ -23,10 +22,9 @@ load_questions_answers --firstname angela --lastname merkel
 load_questions_answers --help
 ```
 
-Dies wird eine Datei `data/json/079137_Angela_Merkel.json` mit allen Fragen und Antworten der angegebenen Person erstellen.
+Dies erzeugt eine Datei `data/json/079137_Angela_Merkel.json` mit allen Fragen und Antworten der angegebenen Person.
 
 ### Konvertierung in txt-Dateien
-Um json-Dateien in txt-Dateien zu konvertieren, gehen Sie wie folgt vor:
 
 ```sh
 convert_qa data/json data/txt txt
@@ -35,10 +33,10 @@ convert_qa data/json data/txt txt
 convert_qa data/json data/csv csv
 ```
 
-Dies wird eine Datei `data/txt/079137_Angela_Merkel.txt` erstellen (für alle Dateien in `data/json`).
+Dies erstellt eine Datei `data/txt/079137_Angela_Merkel.txt` (für alle Dateien in `data/json`).
 
 ### Parlament laden
-Um alle Fragen und Antworten von allen Politikern aus einem Parlament zu holen, können Sie Folgendes tun:
+Alle Fragen und Antworten von allen Politikern aus einem Parlament herunterladen:
 ```sh
 # lade „bundestag“ mit 16 gleichzeitigen Anfragen
 load_parliament_qa bundestag -t 16
