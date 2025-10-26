@@ -290,7 +290,7 @@ async def async_get_questions_answers_urls(
     pages = 0
     pbar = None
     if verbose:
-        tqdm_args = normalize_tqdm_args(tqdm_args, f'collecting {politician_name or 'questions'}')
+        tqdm_args = normalize_tqdm_args(tqdm_args, f'collecting {politician_name or "questions"}')
         pbar = tqdm(total=total, **tqdm_args)
         pbar.update(len(all_urls))
     running = True
