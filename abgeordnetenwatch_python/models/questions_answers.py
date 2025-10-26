@@ -59,7 +59,7 @@ def date_to_str(date: Optional[datetime.date]) -> str:
     return date.strftime('%d.%m.%Y') if date is not None else 'XX.XX.XXXX'
 
 
-type TqdmArgs = Optional[Dict[str, Any]]
+TqdmArgs = Optional[Dict[str, Any]]
 
 
 def normalize_tqdm_args(tqdm_args: TqdmArgs, default_desc: Optional[str] = None) -> TqdmArgs:
