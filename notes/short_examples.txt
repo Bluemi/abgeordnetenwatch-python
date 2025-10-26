@@ -3,3 +3,4 @@ Beispiele:
 time load_questions_answers --firstname friedrich --lastname merz --threads 8
 time load_parliament_qa bundestag --threads 8
 time convert_qa data/json data/txt txt
+time test_scripts/load_all.sh
